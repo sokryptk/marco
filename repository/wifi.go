@@ -5,6 +5,7 @@ type WiFi interface {
 }
 
 type Device interface {
+    GetHwAddress() string
     GetAccessPoints() []AccessPoint
     RequestScan() error
 }

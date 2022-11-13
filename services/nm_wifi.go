@@ -52,6 +52,16 @@ func (dev NMDevice) RequestScan() error {
     return nil
 }
 
+func (dev NMDevice) GetHwAddresss() string {
+    udi, err := dev.conn.Object(nmInterface, dev.Path).GetProperty("org.freedesktop.NetworkManager.Device.Interface")
+    if err != nil {
+        log.Println(err)
+        return ""
+    }
+
+    return udi.Value().(string)
+}
+
 func (n NMWiFi) GetDevices() []NMDevice {
     var devicePaths []dbus.ObjectPath
     err := n.Conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.GetAllDevices", 0).Store(&devicePaths)

@@ -14,12 +14,14 @@ func main() {
 	devices := w.GetDevices()
 
 	for _, r := range devices {
-        err := r.Request()
+        err := r.RequestScan()
         if err != nil {
             log.Println(err)
             continue
+
         }
 
+        fmt.Println(r.GetHwAddresss())
 		points := r.GetAccessPoints()
 
 		for _, r := range points {
