@@ -6,7 +6,7 @@ type WiFi interface {
 
 type Device interface {
     GetAccessPoints() []AccessPoint
-    Scan() error
+    RequestScan() error
 }
 
 type AccessPoint interface {

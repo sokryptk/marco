@@ -43,6 +43,15 @@ func (ap NMAccessPoint) GetSSID() (s string) {
     return string(v.Value().([]byte))
 }
 
+func (dev NMDevice) RequestScan() error {
+    err := dev.conn.Object(nmInterface, dev.Path).Call("org.freedesktop.NetworkManager.Device.Wireless.RequestScan", 0, map[string]interface{}{})
+    if err != nil {
+        return err.Err
+    }
+
+    return nil
+}
+
 func (n NMWiFi) GetDevices() []NMDevice {
     var devicePaths []dbus.ObjectPath
     err := n.Conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.GetAllDevices", 0).Store(&devicePaths)
@@ -91,9 +100,9 @@ func (ap NMAccessPoint) GetStrength() uint {
     return strength
 }
 
-func (n NMDevice) GetAccessPoints() []NMAccessPoint  {
+func (dev NMDevice) GetAccessPoints() []NMAccessPoint  {
     var accessPaths []dbus.ObjectPath
-    err := n.conn.Object(nmInterface, n.Path).Call("org.freedesktop.NetworkManager.Device.Wireless.GetAllAccessPoints", 0).Store(&accessPaths)
+    err := dev.conn.Object(nmInterface, dev.Path).Call("org.freedesktop.NetworkManager.Device.Wireless.GetAllAccessPoints", 0).Store(&accessPaths)
     if err != nil {
         return nil
     }
@@ -103,7 +112,7 @@ func (n NMDevice) GetAccessPoints() []NMAccessPoint  {
     for i, p := range accessPaths {
         if p != "" {
             points[i] = NMAccessPoint{
-                conn: n.conn,
+                conn: dev.conn,
                 Path: p,
             }
         }

@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "log"
     "me.kryptk.marco/services"
 )
 
@@ -13,6 +14,12 @@ func main() {
 	devices := w.GetDevices()
 
 	for _, r := range devices {
+        err := r.Request()
+        if err != nil {
+            log.Println(err)
+            continue
+        }
+
 		points := r.GetAccessPoints()
 
 		for _, r := range points {
