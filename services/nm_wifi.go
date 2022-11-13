@@ -3,6 +3,7 @@ package services
 import (
     "github.com/godbus/dbus/v5"
     "log"
+    "me.kryptk.marco/repository"
 )
 
 const nmInterface = "org.freedesktop.NetworkManager"
@@ -50,6 +51,21 @@ func (dev NMDevice) RequestScan() error {
     }
 
     return nil
+}
+
+func (dev NMDevice) GetDeviceType() repository.DeviceType {
+    rawDeviceType, err := dev.conn.Object(nmInterface, dev.Path).GetProperty("org.freedesktop.NetworkManager.Device.DeviceType")
+    if err != nil {
+        return repository.DeviceTypeUnknown
+    }
+
+    var deviceType uint
+    err = rawDeviceType.Store(&deviceType)
+    if err != nil {
+        return repository.DeviceTypeUnknown
+    }
+
+    return repository.DeviceType(deviceType)
 }
 
 func (dev NMDevice) GetHwAddresss() string {
