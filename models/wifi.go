@@ -20,11 +20,9 @@ func (w WiFi) Init() tea.Cmd {
 }
 
 func (w WiFi) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
+    return w, nil
 }
 
 func (w WiFi) View() string {
-
+    return "Wifi"
 }
-
-func init

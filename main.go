@@ -2,22 +2,15 @@ package main
 
 import (
     "fmt"
-    "me.kryptk.marco/repository"
-    "me.kryptk.marco/services"
+    tea "github.com/charmbracelet/bubbletea"
+    "me.kryptk.marco/models"
+    "os"
 )
 
 func main() {
-	//
-	var w repository.WiFi =  services.NewNMWiFi()
-	defer w.Close()
-
-	devices := w.GetDevices()
-
-	for _, r := range devices {
-        connection, err := r.GetActiveConnection()
-        if err != nil {
-            continue
-        }
-        fmt.Println(connection.GetFrequency())
-	}
+    p := tea.NewProgram(models.NewHome())
+    if err := p.Start(); err != nil {
+        fmt.Printf("Alas, there's been an error: %v", err)
+        os.Exit(1)
+    }
 }
