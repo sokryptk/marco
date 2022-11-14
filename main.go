@@ -2,13 +2,14 @@ package main
 
 import (
     "fmt"
+    "me.kryptk.marco/repository"
     "me.kryptk.marco/services"
 )
 
 func main() {
 	//
-	w := services.NewNMWiFi()
-	defer w.Conn.Close()
+	var w repository.WiFi =  services.NewNMWiFi()
+	defer w.Close()
 
 	devices := w.GetDevices()
 

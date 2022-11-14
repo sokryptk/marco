@@ -11,11 +11,13 @@ const (
 
 type WiFi interface {
     GetDevices() []Device
+    Close() error
 }
 
 type Device interface {
     GetHwAddress() string
     GetAccessPoints() []AccessPoint
+    GetActiveConnection() (AccessPoint, error)
     GetDeviceType() DeviceType
     RequestScan() error
 }

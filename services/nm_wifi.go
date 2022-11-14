@@ -54,7 +54,11 @@ func (dev NMDevice) RequestScan() error {
 	return nil
 }
 
-func (dev NMDevice) GetActiveConnection() (NMAccessPoint, error) {
+func (net NMWiFi) Close() error {
+    return net.Conn.Close()
+}
+
+func (dev NMDevice) GetActiveConnection() (repository.AccessPoint, error) {
 	objectPath, err := dev.conn.Object(nmInterface, dev.Path).GetProperty("org.freedesktop.NetworkManager.Device.ActiveConnection")
 	if err != nil {
 		return NMAccessPoint{}, err
@@ -90,7 +94,7 @@ func (dev NMDevice) GetDeviceType() repository.DeviceType {
 	return repository.DeviceType(deviceType)
 }
 
-func (dev NMDevice) GetHwAddresss() string {
+func (dev NMDevice) GetHwAddress() string {
 	udi, err := dev.conn.Object(nmInterface, dev.Path).GetProperty("org.freedesktop.NetworkManager.Device.Interface")
 	if err != nil {
 		log.Println(err)
@@ -100,17 +104,17 @@ func (dev NMDevice) GetHwAddresss() string {
 	return udi.Value().(string)
 }
 
-func (n NMWiFi) GetDevices() []NMDevice {
+func (net NMWiFi) GetDevices() []repository.Device {
 	var devicePaths []dbus.ObjectPath
-	err := n.Conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.GetAllDevices", 0).Store(&devicePaths)
+	err := net.Conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.GetAllDevices", 0).Store(&devicePaths)
 	if err != nil {
 		return nil
 	}
 
-	devices := make([]NMDevice, len(devicePaths))
+	devices := make([]repository.Device, len(devicePaths))
 
 	for i, d := range devicePaths {
-		devices[i] = NMDevice{conn: n.Conn, Path: d}
+		devices[i] = NMDevice{conn: net.Conn, Path: d}
 	}
 
 	return devices
@@ -148,14 +152,18 @@ func (ap NMAccessPoint) GetStrength() uint {
 	return strength
 }
 
-func (dev NMDevice) GetAccessPoints() []NMAccessPoint {
+func (ap NMAccessPoint) Connect() error {
+    return nil
+}
+
+func (dev NMDevice) GetAccessPoints() []repository.AccessPoint {
 	var accessPaths []dbus.ObjectPath
 	err := dev.conn.Object(nmInterface, dev.Path).Call("org.freedesktop.NetworkManager.Device.Wireless.GetAllAccessPoints", 0).Store(&accessPaths)
 	if err != nil {
 		return nil
 	}
 
-	points := make([]NMAccessPoint, len(accessPaths))
+	points := make([]repository.AccessPoint, len(accessPaths))
 
 	for i, p := range accessPaths {
 		if p != "" {
