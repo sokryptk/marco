@@ -9,17 +9,26 @@ const (
     DeviceTypeBluetooth DeviceType = 5
 )
 
-type WiFi interface {
+type Network interface {
     GetDevices() []Device
     Close() error
 }
 
 type Device interface {
     GetHwAddress() string
+    GetDeviceType() DeviceType
+}
+
+type WiFiDevice interface {
+    Device
+    GetHwAddress() string
     GetAccessPoints() []AccessPoint
     GetActiveConnection() (AccessPoint, error)
-    GetDeviceType() DeviceType
     RequestScan() error
+}
+
+type EthernetDevice interface {
+    Device
 }
 
 type AccessPoint interface {

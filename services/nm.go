@@ -9,26 +9,34 @@ import (
 
 const nmInterface = "org.freedesktop.NetworkManager"
 
-type NMWiFi struct {
+type NM struct {
 	Conn *dbus.Conn
 }
 
-func NewNMWiFi() NMWiFi {
+func NewNM() NM {
 	conn, err := dbus.ConnectSystemBus()
 
 	if err != nil {
 		log.Fatal(err)
-		return NMWiFi{}
+		return NM{}
 	}
 
-	return NMWiFi{
+	return NM{
 		Conn: conn,
 	}
 }
 
 type NMDevice struct {
-	conn *dbus.Conn
-	Path dbus.ObjectPath
+    conn *dbus.Conn
+    Path dbus.ObjectPath
+}
+
+type NMWifiDevice struct {
+	NMDevice
+}
+
+type NMEthernetDevice struct {
+    NMDevice
 }
 
 type NMAccessPoint struct {
@@ -45,7 +53,7 @@ func (ap NMAccessPoint) GetSSID() (s string) {
 	return string(v.Value().([]byte))
 }
 
-func (dev NMDevice) RequestScan() error {
+func (dev NMWifiDevice) RequestScan() error {
 	err := dev.conn.Object(nmInterface, dev.Path).Call("org.freedesktop.NetworkManager.Device.Wireless.RequestScan", 0, map[string]interface{}{})
 	if err != nil {
 		return err.Err
@@ -54,11 +62,11 @@ func (dev NMDevice) RequestScan() error {
 	return nil
 }
 
-func (net NMWiFi) Close() error {
+func (net NM) Close() error {
     return net.Conn.Close()
 }
 
-func (dev NMDevice) GetActiveConnection() (repository.AccessPoint, error) {
+func (dev NMWifiDevice) GetActiveConnection() (repository.AccessPoint, error) {
 	objectPath, err := dev.conn.Object(nmInterface, dev.Path).GetProperty("org.freedesktop.NetworkManager.Device.ActiveConnection")
 	if err != nil {
 		return NMAccessPoint{}, err
@@ -104,17 +112,27 @@ func (dev NMDevice) GetHwAddress() string {
 	return udi.Value().(string)
 }
 
-func (net NMWiFi) GetDevices() []repository.Device {
+func (net NM) GetDevices() []repository.Device {
 	var devicePaths []dbus.ObjectPath
 	err := net.Conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.GetAllDevices", 0).Store(&devicePaths)
 	if err != nil {
 		return nil
 	}
 
+
 	devices := make([]repository.Device, len(devicePaths))
 
 	for i, d := range devicePaths {
-		devices[i] = NMDevice{conn: net.Conn, Path: d}
+		device := NMDevice{conn: net.Conn, Path: d}
+
+        switch device.GetDeviceType() {
+        case repository.DeviceTypeWifi:
+            devices[i] = NMWifiDevice{NMDevice: device}
+        case repository.DeviceTypeEthernet:
+            devices[i] = NMEthernetDevice{NMDevice: device}
+        default:
+            devices[i] = device
+        }
 	}
 
 	return devices
@@ -156,7 +174,7 @@ func (ap NMAccessPoint) Connect() error {
     return nil
 }
 
-func (dev NMDevice) GetAccessPoints() []repository.AccessPoint {
+func (dev NMWifiDevice) GetAccessPoints() []repository.AccessPoint {
 	var accessPaths []dbus.ObjectPath
 	err := dev.conn.Object(nmInterface, dev.Path).Call("org.freedesktop.NetworkManager.Device.Wireless.GetAllAccessPoints", 0).Store(&accessPaths)
 	if err != nil {
