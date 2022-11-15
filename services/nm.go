@@ -40,12 +40,12 @@ type NMEthernetDevice struct {
 }
 
 type NMAccessPoint struct {
-	conn *dbus.Conn
+    dev *NMWifiDevice
 	Path dbus.ObjectPath
 }
 
 func (ap NMAccessPoint) GetSSID() (s string) {
-	v, err := ap.conn.Object(nmInterface, ap.Path).GetProperty("org.freedesktop.NetworkManager.AccessPoint.Ssid")
+	v, err := ap.dev.conn.Object(nmInterface, ap.Path).GetProperty("org.freedesktop.NetworkManager.AccessPoint.Ssid")
 	if err != nil {
 		log.Println(err)
 	}
@@ -139,7 +139,7 @@ func (net NM) GetDevices() []repository.Device {
 }
 
 func (ap NMAccessPoint) GetFrequency() uint {
-	v, err := ap.conn.Object(nmInterface, ap.Path).GetProperty("org.freedesktop.NetworkManager.AccessPoint.Frequency")
+	v, err := ap.dev.conn.Object(nmInterface, ap.Path).GetProperty("org.freedesktop.NetworkManager.AccessPoint.Frequency")
 	if err != nil {
 		log.Println(err)
 	}
@@ -155,7 +155,7 @@ func (ap NMAccessPoint) GetFrequency() uint {
 }
 
 func (ap NMAccessPoint) GetStrength() uint {
-	v, err := ap.conn.Object(nmInterface, ap.Path).GetProperty("org.freedesktop.NetworkManager.AccessPoint.Strength")
+	v, err := ap.dev.conn.Object(nmInterface, ap.Path).GetProperty("org.freedesktop.NetworkManager.AccessPoint.Strength")
 	if err != nil {
 		log.Println(err)
 	}
@@ -186,11 +186,21 @@ func (dev NMWifiDevice) GetAccessPoints() []repository.AccessPoint {
 	for i, p := range accessPaths {
 		if p != "" {
 			points[i] = NMAccessPoint{
-				conn: dev.conn,
 				Path: p,
+                dev: &dev,
 			}
 		}
 	}
 
 	return points
+}
+
+
+func (ap NMAccessPoint) Activate() error {
+    err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.ActivateConnection", 0 , dbus.ObjectPath("/"), ap.dev.Path, ap.Path)
+    if err != nil {
+        return err.Err   
+    }
+
+    return nil
 }

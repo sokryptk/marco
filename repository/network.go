@@ -18,7 +18,7 @@ type Network interface {
 
 type Device interface {
     GetHwAddress() string
-    GetDeviceType() DeviceType
+GetDeviceType() DeviceType
 }
 
 type WiFiDevice interface {
@@ -37,4 +37,5 @@ type AccessPoint interface {
     GetSSID() string
     GetFrequency() uint
     GetStrength() uint
+    Activate() error
 }

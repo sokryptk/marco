@@ -11,9 +11,18 @@ func main() {
     devices := s.GetDevices()
 
     for _, d := range devices {
-
         switch d := d.(type) {
         case repository.WiFiDevice:
+            err := d.RequestScan()
+            if err != nil {
+                return
+            }
+
+            ap := d.GetAccessPoints()
+            for _, a := range ap {
+                fmt.Println(a.GetSSID())
+            }
+
             fmt.Println(d.GetHwAddress())
         case repository.EthernetDevice:
             fmt.Println(d.GetHwAddress())
