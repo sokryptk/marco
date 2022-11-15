@@ -6,6 +6,8 @@ const (
     DeviceTypeUnknown DeviceType = 0
     DeviceTypeEthernet DeviceType = 1
     DeviceTypeWifi DeviceType = 2
+    DeviceTypeBridge DeviceType = 13
+    DeviceTypeTunnel DeviceType = 16
     DeviceTypeBluetooth DeviceType = 5
 )
 
@@ -35,6 +37,4 @@ type AccessPoint interface {
     GetSSID() string
     GetFrequency() uint
     GetStrength() uint
-
-    Connect() error
 }
