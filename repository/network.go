@@ -37,5 +37,5 @@ type AccessPoint interface {
     GetSSID() string
     GetFrequency() uint
     GetStrength() uint
-    Activate() error
+    Connect() error
 }

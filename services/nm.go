@@ -170,10 +170,6 @@ func (ap NMAccessPoint) GetStrength() uint {
 	return strength
 }
 
-func (ap NMAccessPoint) Connect() error {
-    return nil
-}
-
 func (dev NMWifiDevice) GetAccessPoints() []repository.AccessPoint {
 	var accessPaths []dbus.ObjectPath
 	err := dev.conn.Object(nmInterface, dev.Path).Call("org.freedesktop.NetworkManager.Device.Wireless.GetAllAccessPoints", 0).Store(&accessPaths)
@@ -196,7 +192,7 @@ func (dev NMWifiDevice) GetAccessPoints() []repository.AccessPoint {
 }
 
 
-func (ap NMAccessPoint) Activate() error {
+func (ap NMAccessPoint) Connect() error {
     err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.ActivateConnection", 0 , dbus.ObjectPath("/"), ap.dev.Path, ap.Path)
     if err != nil {
         return err.Err   

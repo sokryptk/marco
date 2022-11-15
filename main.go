@@ -21,6 +21,7 @@ func main() {
             ap := d.GetAccessPoints()
             for _, a := range ap {
                 fmt.Println(a.GetSSID())
+                fmt.Println(a.Connect())
             }
 
             fmt.Println(d.GetHwAddress())
