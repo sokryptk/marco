@@ -230,7 +230,7 @@ func (dev NMDevice) listenForState() (state uint32, reason uint32, err error) {
 
                 // TODO
                 // Will document the state codes later
-                if state == 120 {
+                if state == 120 || state == 100 {
                     return state, reason, nil
                 }
         case <- time.After(time.Second * 5):
