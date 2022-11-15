@@ -5,6 +5,7 @@ import (
 	"github.com/godbus/dbus/v5"
 	"log"
 	"me.kryptk.marco/repository"
+    "time"
 )
 
 const nmInterface = "org.freedesktop.NetworkManager"
@@ -193,10 +194,47 @@ func (dev NMWifiDevice) GetAccessPoints() []repository.AccessPoint {
 
 
 func (ap NMAccessPoint) Connect() error {
-    err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.ActivateConnection", 0 , dbus.ObjectPath("/"), ap.dev.Path, ap.Path)
+    err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.ActivateConnection", 0 , dbus.ObjectPath("/"), ap.dev.Path, ap.Path).Err
     if err != nil {
-        return err.Err   
+        return err
     }
 
     return nil
+}
+
+func (dev NMDevice) listenForState() (state uint32, reason uint32, err error) {
+    opts := []dbus.MatchOption{
+        dbus.WithMatchInterface("org.freedesktop.NetworkManager.Device"),
+        dbus.WithMatchObjectPath(dev.Path),
+        dbus.WithMatchMember("StateChanged"),
+    }
+
+    err = dev.conn.AddMatchSignal(opts...)
+    if err != nil {
+        return 0, 0, err
+    }
+
+    signals := make(chan *dbus.Signal)
+    dev.conn.Signal(signals)
+
+    defer func() {
+        dev.conn.RemoveMatchSignal(opts...)
+        dev.conn.RemoveSignal(signals)
+    }()
+
+    for {
+        select {
+        case signal := <- signals:
+                state = signal.Body[0].(uint32)
+                reason = signal.Body[2].(uint32)
+
+                // TODO
+                // Will document the state codes later
+                if state == 120 {
+                    return state, reason, nil
+                }
+        case <- time.After(time.Second * 5):
+            return state, reason, nil
+        }
+    }
 }
