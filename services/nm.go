@@ -5,7 +5,7 @@ import (
 	"github.com/godbus/dbus/v5"
 	"log"
 	"me.kryptk.marco/repository"
-    "time"
+	"time"
 )
 
 const nmInterface = "org.freedesktop.NetworkManager"
@@ -28,8 +28,8 @@ func NewNM() NM {
 }
 
 type NMDevice struct {
-    conn *dbus.Conn
-    Path dbus.ObjectPath
+	conn *dbus.Conn
+	Path dbus.ObjectPath
 }
 
 type NMWifiDevice struct {
@@ -37,11 +37,11 @@ type NMWifiDevice struct {
 }
 
 type NMEthernetDevice struct {
-    NMDevice
+	NMDevice
 }
 
 type NMAccessPoint struct {
-    dev *NMWifiDevice
+	dev  *NMWifiDevice
 	Path dbus.ObjectPath
 }
 
@@ -64,7 +64,7 @@ func (dev NMWifiDevice) RequestScan() error {
 }
 
 func (net NM) Close() error {
-    return net.Conn.Close()
+	return net.Conn.Close()
 }
 
 func (dev NMWifiDevice) GetActiveConnection() (repository.AccessPoint, error) {
@@ -120,20 +120,19 @@ func (net NM) GetDevices() []repository.Device {
 		return nil
 	}
 
-
 	devices := make([]repository.Device, len(devicePaths))
 
 	for i, d := range devicePaths {
 		device := NMDevice{conn: net.Conn, Path: d}
 
-        switch device.GetDeviceType() {
-        case repository.DeviceTypeWifi:
-            devices[i] = NMWifiDevice{NMDevice: device}
-        case repository.DeviceTypeEthernet:
-            devices[i] = NMEthernetDevice{NMDevice: device}
-        default:
-            devices[i] = device
-        }
+		switch device.GetDeviceType() {
+		case repository.DeviceTypeWifi:
+			devices[i] = NMWifiDevice{NMDevice: device}
+		case repository.DeviceTypeEthernet:
+			devices[i] = NMEthernetDevice{NMDevice: device}
+		default:
+			devices[i] = device
+		}
 	}
 
 	return devices
@@ -184,7 +183,7 @@ func (dev NMWifiDevice) GetAccessPoints() []repository.AccessPoint {
 		if p != "" {
 			points[i] = NMAccessPoint{
 				Path: p,
-                dev: &dev,
+				dev:  &dev,
 			}
 		}
 	}
@@ -192,9 +191,74 @@ func (dev NMWifiDevice) GetAccessPoints() []repository.AccessPoint {
 	return points
 }
 
+func (ap NMAccessPoint) Connect(options repository.ConnectOptions) repository.ConnectionStatus {
+	var activeConn dbus.ObjectPath
 
-func (ap NMAccessPoint) Connect() error {
-    err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.ActivateConnection", 0 , dbus.ObjectPath("/"), ap.dev.Path, ap.Path).Err
+    err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call(
+		"org.freedesktop.NetworkManager.ActivateConnection", 0, dbus.ObjectPath("/"), ap.dev.Path, ap.Path,
+	).Store(&activeConn)
+
+	if err != nil {
+        state, reason, err := ap.addConnectionAndConnect(options)
+        if err != nil {
+            log.Println(state, reason, err)
+
+            return repository.ConnectionStatus(state)
+        }
+	}
+
+    state, reason, err := ap.dev.listenForState()
+    if err != nil {
+        log.Println(state, reason, err)
+        return repository.ConnectionStatus(state)
+    }
+
+    if repository.ConnectionStatusErrFailed.Equal(state) && repository.ConnectionStatusErrNoSecrets.Equal(reason){
+        // Need auth
+
+        settings, err := ap.dev.conn.Object(nmInterface, activeConn).GetProperty("org.freedesktop.NetworkManager.Connection.Active.Connection")
+        if err != nil {
+            log.Println(err)
+            return repository.ConnectionStatusErrFailed
+        }
+
+        err = ap.updateConnection(settings.Value().(dbus.ObjectPath), options)
+        if err != nil {
+            log.Println(err)
+            return repository.ConnectionStatusErrFailed
+        }
+
+        state, reason, err := ap.dev.listenForState()
+        if err != nil {
+            log.Println(state, reason, err)
+            return repository.ConnectionStatus(reason)
+        }
+
+        return repository.ConnectionStatus(reason)
+    }
+
+    return repository.ConnectionStatus(state)
+}
+
+func (ap NMAccessPoint) updateConnection(connectionPath dbus.ObjectPath, options repository.ConnectOptions) error {
+    properties := map[string]map[string]interface{}{
+        "connection": {
+            "id": ap.GetSSID(),
+        },
+        "802-11-wireless": {
+            "mode": "infrastructure",
+            "ssid": []byte(ap.GetSSID()),
+        },
+    }
+
+    if options.Password != nil {
+        properties["802-11-wireless-security"] = map[string]interface{}{
+            "key-mgmt": "wpa-psk",
+            "psk": options.Password,
+        }
+    }
+
+	err := ap.dev.conn.Object(nmInterface, connectionPath).Call("org.freedesktop.NetworkManager.Settings.Connection.Update", 0, properties).Err
     if err != nil {
         return err
     }
@@ -202,39 +266,63 @@ func (ap NMAccessPoint) Connect() error {
     return nil
 }
 
-func (dev NMDevice) listenForState() (state uint32, reason uint32, err error) {
-    opts := []dbus.MatchOption{
-        dbus.WithMatchInterface("org.freedesktop.NetworkManager.Device"),
-        dbus.WithMatchObjectPath(dev.Path),
-        dbus.WithMatchMember("StateChanged"),
+func (ap NMAccessPoint) addConnectionAndConnect(options repository.ConnectOptions) (uint32, uint32, error) {
+    properties := map[string]map[string]interface{}{
+        "connection": {
+            "id": ap.GetSSID(),
+        },
+        "802-11-wireless": {
+            "mode": "infrastructure",
+            "ssid": []byte(ap.GetSSID()),
+        },
     }
 
-    err = dev.conn.AddMatchSignal(opts...)
-    if err != nil {
-        return 0, 0, err
-    }
-
-    signals := make(chan *dbus.Signal)
-    dev.conn.Signal(signals)
-
-    defer func() {
-        dev.conn.RemoveMatchSignal(opts...)
-        dev.conn.RemoveSignal(signals)
-    }()
-
-    for {
-        select {
-        case signal := <- signals:
-                state = signal.Body[0].(uint32)
-                reason = signal.Body[2].(uint32)
-
-                // TODO
-                // Will document the state codes later
-                if state == 120 || state == 100 {
-                    return state, reason, nil
-                }
-        case <- time.After(time.Second * 5):
-            return state, reason, nil
+    if options.Password != nil {
+        properties["802-11-wireless-security"] = map[string]interface{}{
+            "key-mgmt": "wpa-psk",
+            "psk": *options.Password,
         }
     }
+
+	err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.AddAndActivateConnection", 0, properties, ap.dev.Path, ap.Path).Err
+	if err != nil {
+		return 120, 0, err
+	}
+
+	return ap.dev.listenForState()
+}
+
+func (dev NMDevice) listenForState() (state uint32, reason uint32, err error) {
+	opts := []dbus.MatchOption{
+		dbus.WithMatchInterface("org.freedesktop.NetworkManager.Device"),
+		dbus.WithMatchObjectPath(dev.Path),
+		dbus.WithMatchMember("StateChanged"),
+	}
+
+	err = dev.conn.AddMatchSignal(opts...)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	signals := make(chan *dbus.Signal)
+	dev.conn.Signal(signals)
+
+	defer func() {
+		dev.conn.RemoveMatchSignal(opts...)
+		dev.conn.RemoveSignal(signals)
+	}()
+
+	for {
+		select {
+		case signal := <-signals:
+			state = signal.Body[0].(uint32)
+			reason = signal.Body[2].(uint32)
+
+			if repository.ConnectionStatusErrFailed.Equal(state) || repository.ConnectionStatusActivated.Equal(state) {
+				return state, reason, nil
+			}
+		case <-time.After(time.Second * 3):
+			return state, reason, nil
+		}
+	}
 }
