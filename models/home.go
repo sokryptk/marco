@@ -1,68 +1,65 @@
-package  models
+package models
 
 import (
-    tea "github.com/charmbracelet/bubbletea"
-    "github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
-var tabLayout = lipgloss.NewStyle().
-    Foreground(lipgloss.Color("#FFF7DB")).
-    Background(lipgloss.Color("#888B7E")).
-    Border(lipgloss.NormalBorder()).
-    Padding(0, 3).
-    MarginTop(1)
-
-var activeTabLayout = tabLayout.Copy().
-    Foreground(lipgloss.Color("#FFF7DB")).
-    Background(lipgloss.Color("#F25D94")).
-    Underline(true)
-
+var body = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 
 type teaModelWithName interface {
-    tea.Model
-    Name() string
+	tea.Model
+	Name() string
 }
 
 type Home struct {
-    Pages []teaModelWithName
-    Selected int
+	width, height int
+	Pages         []teaModelWithName
+	Selected      int
 }
 
 func (h Home) Init() tea.Cmd {
-    return nil
+	return nil
 }
 
 func (h Home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-    switch msg := msg.(type) {
-    case tea.KeyMsg:
-        switch msg.String() {
-        case "ctrl+c", "enter":
-            return h, tea.Quit
-        }
-    }
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "enter":
+			return h, tea.Quit
+		}
+	case tea.WindowSizeMsg:
+		h.width, h.height = msg.Width, msg.Height
+	}
 
-    return h, nil
+	return h, nil
 }
 
 func (h Home) View() string {
-    var renderString string
+	borderVert, borderHor := body.GetBorderBottomSize()*2, body.GetBorderLeftSize()*2
 
-    for i, p := range h.Pages {
-        if i == 0 {
-            renderString += activeTabLayout.Render(p.Name())
-        } else {
-            renderString += tabLayout.Render(p.Name())
-        }
-    }
+	sidebar := Sidebar{
+		items:    h.Pages,
+		selected: h.Selected,
+	}
 
-    sideBar :=  lipgloss.JoinVertical(lipgloss.Top, renderString)
+	sW := lipgloss.Width(sidebar.View())
 
-    return sideBar
+	content := Content{
+		width:  h.width - sW,
+		height: h.height - borderVert*2,
+		model:  h.Pages[h.Selected],
+	}
+
+	layout := lipgloss.JoinHorizontal(lipgloss.Top, sidebar.View(), content.View())
+
+	return body.Width(h.width - borderHor).Height(h.height - borderVert).Render(layout)
 }
 
 func NewHome() Home {
-    return Home{
-        Pages : []teaModelWithName{NewNetwork(), NewNetwork()},
-        Selected : 0,
-    }
+	return Home{
+		Pages:    []teaModelWithName{NewNetwork(), NewNetwork()},
+		Selected: 0,
+	}
 }
