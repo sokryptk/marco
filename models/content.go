@@ -22,5 +22,5 @@ func (c Content) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (c Content) View() string {
 	width, height := content.GetHorizontalBorderSize(), content.GetVerticalBorderSize()
-	return content.Height(c.height - height).Width(c.width - width).Render(c.model.View())
+	return content.Height(c.height - height).Width(c.width - width).AlignHorizontal(0.5).Render(c.model.View())
 }
