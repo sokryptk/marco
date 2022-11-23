@@ -5,7 +5,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var body = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
+var body = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).Padding(1, 4, 1, 2)
 
 type teaModelWithName interface {
 	tea.Model
@@ -37,7 +37,11 @@ func (h Home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (h Home) View() string {
-	borderVert, borderHor := body.GetBorderBottomSize()*2, body.GetBorderLeftSize()*2
+	// The height and the width of the body doesn't take into account the borders and the margins
+	// The Height and Width are set of the inner connect of the body.
+	// Therefore, subtract the margins, borders before setting the size of the body
+	w, he := body.GetVerticalMargins()+body.GetVerticalBorderSize(), body.GetHorizontalMargins()+body.GetHorizontalBorderSize()
+	body = body.Width(h.width - w).Height(h.height - he)
 
 	sidebar := Sidebar{
 		items:    h.Pages,
@@ -47,14 +51,14 @@ func (h Home) View() string {
 	sW := lipgloss.Width(sidebar.View())
 
 	content := Content{
-		width:  h.width - sW,
-		height: h.height - borderVert*2,
+		width:  h.width - sW - body.GetHorizontalFrameSize(),
+		height: h.height - body.GetVerticalFrameSize(),
 		model:  h.Pages[h.Selected],
 	}
 
 	layout := lipgloss.JoinHorizontal(lipgloss.Top, sidebar.View(), content.View())
 
-	return body.Width(h.width - borderHor).Height(h.height - borderVert).Render(layout)
+	return body.Render(layout)
 }
 
 func NewHome() Home {
