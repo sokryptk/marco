@@ -6,7 +6,7 @@ import (
 )
 
 var tabBody = lipgloss.NewStyle().MarginRight(3)
-var tab = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 5)
+var tab = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 5).Width(10)
 var activeTab = tab.Copy().Border(lipgloss.ThickBorder())
 
 type Sidebar struct {
