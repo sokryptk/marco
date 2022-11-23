@@ -5,7 +5,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var body = lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).Padding(1, 4, 1, 2)
+var body = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1, 3).Margin(1, 3)
 
 type teaModelWithName interface {
 	tea.Model
@@ -40,7 +40,7 @@ func (h Home) View() string {
 	// The height and the width of the body doesn't take into account the borders and the margins
 	// The Height and Width are set of the inner connect of the body.
 	// Therefore, subtract the margins, borders before setting the size of the body
-	w, he := body.GetVerticalMargins()+body.GetVerticalBorderSize(), body.GetHorizontalMargins()+body.GetHorizontalBorderSize()
+	w, he := body.GetHorizontalMargins()+body.GetHorizontalBorderSize(), body.GetVerticalMargins()+body.GetVerticalBorderSize()
 	body = body.Width(h.width - w).Height(h.height - he)
 
 	sidebar := Sidebar{

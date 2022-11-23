@@ -5,8 +5,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var tabBody = lipgloss.NewStyle().Margin(0, 1)
-var tab = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 3)
+var tabBody = lipgloss.NewStyle().MarginRight(3)
+var tab = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 5)
 var activeTab = tab.Copy().Border(lipgloss.ThickBorder())
 
 type Sidebar struct {
