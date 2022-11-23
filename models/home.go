@@ -3,6 +3,7 @@ package models
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"me.kryptk.marco/models/pages"
 )
 
 var body = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1, 3).Margin(1, 3)
@@ -63,7 +64,7 @@ func (h Home) View() string {
 
 func NewHome() Home {
 	return Home{
-		Pages:    []teaModelWithName{NewNetwork(), NewNetwork()},
+		Pages:    []teaModelWithName{pages.NewNetwork(), pages.NewNetwork()},
 		Selected: 0,
 	}
 }
