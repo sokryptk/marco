@@ -16,8 +16,11 @@ func (c Content) Init() tea.Cmd {
 	return nil
 }
 
-func (c Content) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return nil, nil
+func (c Content) Update(msg tea.Msg) (Content, tea.Cmd) {
+	var cmd tea.Cmd
+	c.model, cmd = c.model.Update(msg)
+
+	return c, cmd
 }
 
 func (c Content) View() string {

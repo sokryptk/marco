@@ -3,6 +3,7 @@ package models
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"math"
 	"me.kryptk.marco/models/pages"
 )
 
@@ -15,7 +16,10 @@ type teaModelWithName interface {
 
 type Home struct {
 	width, height int
+	paneState     int
 	Pages         []teaModelWithName
+	Sidebar       Sidebar
+	Content       Content
 	Selected      int
 }
 
@@ -24,17 +28,47 @@ func (h Home) Init() tea.Cmd {
 }
 
 func (h Home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmd := make([]tea.Cmd, 2)
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "enter":
 			return h, tea.Quit
+		case "tab":
+			h.paneState = (h.paneState + 1) % 2
 		}
 	case tea.WindowSizeMsg:
 		h.width, h.height = msg.Width, msg.Height
+		sW := lipgloss.Width(h.Sidebar.View())
+		h.Content.width = h.width - sW - body.GetHorizontalFrameSize()
+		h.Content.height = h.height - body.GetVerticalFrameSize()
 	}
 
-	return h, nil
+	switch h.paneState {
+	case 0:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "up":
+				selected := int(math.Abs(float64((h.Selected - 1) % len(h.Pages))))
+				h.Selected = selected
+				h.Sidebar.selected = selected
+				h.Content.model = h.Pages[selected]
+			case "down":
+				selected := (h.Selected + 1) % len(h.Pages)
+				h.Selected = selected
+				h.Sidebar.selected = selected
+				h.Content.model = h.Pages[selected]
+			}
+		}
+
+		h.Sidebar, cmd[0] = h.Sidebar.Update(msg)
+	case 1:
+		h.Content, cmd[1] = h.Content.Update(msg)
+	}
+
+	return h, tea.Batch(cmd...)
 }
 
 func (h Home) View() string {
@@ -44,27 +78,33 @@ func (h Home) View() string {
 	w, he := body.GetHorizontalMargins()+body.GetHorizontalBorderSize(), body.GetVerticalMargins()+body.GetVerticalBorderSize()
 	body = body.Width(h.width - w).Height(h.height - he)
 
-	sidebar := Sidebar{
-		items:    h.Pages,
-		selected: h.Selected,
+	selectedTab := lipgloss.NewStyle().Faint(true)
+	sideView := h.Sidebar.View()
+	contentView := h.Content.View()
+
+	if h.paneState != 0 {
+		sideView = selectedTab.Render(sideView)
+	} else {
+		contentView = selectedTab.Render(contentView)
 	}
 
-	sW := lipgloss.Width(sidebar.View())
-
-	content := Content{
-		width:  h.width - sW - body.GetHorizontalFrameSize(),
-		height: h.height - body.GetVerticalFrameSize(),
-		model:  h.Pages[h.Selected],
-	}
-
-	layout := lipgloss.JoinHorizontal(lipgloss.Top, sidebar.View(), content.View())
+	layout := lipgloss.JoinHorizontal(lipgloss.Top, sideView, contentView)
 
 	return body.Render(layout)
 }
 
 func NewHome() Home {
+	withNames := []teaModelWithName{
+		pages.NewNetwork(),
+	}
+
 	return Home{
-		Pages:    []teaModelWithName{pages.NewNetwork(), pages.NewNetwork()},
-		Selected: 0,
+		Pages: withNames,
+		Sidebar: Sidebar{
+			items: withNames,
+		},
+		Content: Content{
+			model: withNames[0],
+		},
 	}
 }

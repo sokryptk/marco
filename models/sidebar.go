@@ -3,11 +3,12 @@ package models
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"log"
 )
 
 var tabBody = lipgloss.NewStyle().MarginRight(3)
-var tab = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 5).Width(10)
-var activeTab = tab.Copy().Border(lipgloss.ThickBorder())
+var tab = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 5).Width(20).AlignHorizontal(0.5)
+var activeTab = tab.Copy().Border(lipgloss.DoubleBorder())
 
 type Sidebar struct {
 	items    []teaModelWithName
@@ -18,11 +19,12 @@ func (s Sidebar) Init() tea.Cmd {
 	return nil
 }
 
-func (s Sidebar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (s Sidebar) Update(msg tea.Msg) (Sidebar, tea.Cmd) {
 	return s, nil
 }
 
 func (s Sidebar) View() string {
+	log.Println("sidebar selected : ", s.selected)
 	return tabBody.Render(lipgloss.JoinVertical(lipgloss.Center, s.toTabs()...))
 }
 
