@@ -27,6 +27,7 @@ type Network struct {
 
 func NewNetwork() Network {
 	network := Network{Service: services.NewNM()}
+	_ = network.Service.GetDevices()
 
 	network.list = list.New([]list.Item{}, itemDelegate{10}, 0, 0)
 	network.list.SetFilteringEnabled(false)
