@@ -39,6 +39,10 @@ func (w Network) Init() tea.Cmd {
 	return nil
 }
 
+func (w Network) Close() error {
+	return w.Service.Close()
+}
+
 func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 2)
 

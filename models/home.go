@@ -3,6 +3,7 @@ package models
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"log"
 	"math"
 	"me.kryptk.marco/models/pages"
 )
@@ -16,6 +17,7 @@ type pageChangeMsg struct {
 type teaModelWithName interface {
 	tea.Model
 	Name() string
+	Close() error
 }
 
 type Home struct {
@@ -25,6 +27,14 @@ type Home struct {
 	Sidebar       Sidebar
 	Content       Content
 	Selected      int
+}
+
+func (h Home) Close() {
+	for _, page := range h.Pages {
+		if err := page.Close(); err != nil {
+			log.Printf("err in %s: %e", page.Name(), err)
+		}
+	}
 }
 
 func (h Home) Init() tea.Cmd {

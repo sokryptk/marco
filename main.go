@@ -14,7 +14,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := tea.NewProgram(models.NewHome(), tea.WithAltScreen())
+	home := models.NewHome()
+	defer home.Close()
+
+	p := tea.NewProgram(home, tea.WithAltScreen())
 	if err := p.Start(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
