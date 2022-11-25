@@ -18,12 +18,26 @@ func (c Content) Init() tea.Cmd {
 
 func (c Content) Update(msg tea.Msg) (Content, tea.Cmd) {
 	var cmd tea.Cmd
-	c.model, cmd = c.model.Update(msg)
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		c.width, c.height = msg.Width, msg.Height
+
+		msg.Width -= content.GetHorizontalFrameSize()
+		msg.Height -= content.GetVerticalFrameSize()
+
+		c.model, cmd = c.model.Update(msg)
+	case pageChangeMsg:
+		c.model = msg.new
+	case tea.KeyMsg:
+		c.model, cmd = c.model.Update(msg)
+	}
 
 	return c, cmd
 }
 
 func (c Content) View() string {
 	width, height := content.GetHorizontalBorderSize(), content.GetVerticalBorderSize()
+
 	return content.Height(c.height - height).Width(c.width - width).AlignHorizontal(0.5).Render(c.model.View())
 }

@@ -3,7 +3,6 @@ package models
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"log"
 )
 
 var tabBody = lipgloss.NewStyle().MarginRight(3)
@@ -24,7 +23,6 @@ func (s Sidebar) Update(msg tea.Msg) (Sidebar, tea.Cmd) {
 }
 
 func (s Sidebar) View() string {
-	log.Println("sidebar selected : ", s.selected)
 	return tabBody.Render(lipgloss.JoinVertical(lipgloss.Center, s.toTabs()...))
 }
 
