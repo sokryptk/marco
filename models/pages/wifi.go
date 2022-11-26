@@ -63,7 +63,7 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		w.list.SetSize(msg.Width, msg.Height-titleStyle.GetVerticalFrameSize())
-		w.list.SetDelegate(itemDelegate{Width: msg.Width - activeTabStyle.GetHorizontalFrameSize() - 4})
+		w.list.SetDelegate(itemDelegate{Width: msg.Width - activeTabStyle.GetHorizontalFrameSize() - 8})
 	}
 
 	var cmd tea.Cmd
