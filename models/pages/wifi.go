@@ -100,6 +100,7 @@ func (w Network) getItems() []list.Item {
 					Title:     p.GetSSID(),
 					Strength:  renderWifi(p.GetStrength()),
 					Frequency: fmt.Sprintf("%0.1fGHz", float64(p.GetFrequency())/float64(1000)),
+					Connected: p.IsConnected(),
 				})
 			}
 		}
@@ -123,6 +124,7 @@ type item struct {
 	Title     string
 	Strength  string
 	Frequency string
+	Connected bool
 }
 
 func (i item) FilterValue() string {
@@ -144,13 +146,21 @@ func (i itemDelegate) Render(w io.Writer, m list.Model, index int, curItem list.
 	wh := lipgloss.Width
 	ssid := it.Title
 	strength := it.Strength
-	empty := lipgloss.NewStyle().Width(i.Width - wh(ssid) - wh(strength)).String()
+
+	var connectedState string
+	if it.Connected {
+		connectedState = "connected"
+	}
+
+	connected := lipgloss.NewStyle().Faint(true).PaddingLeft(1).Render(connectedState)
+	empty := lipgloss.NewStyle().Width(i.Width - wh(ssid) - wh(strength) - wh(connectedState)).String()
 
 	iString := lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			ssid,
+			connected,
 			empty,
 			strength,
 		),
