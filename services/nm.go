@@ -194,95 +194,95 @@ func (dev NMWifiDevice) GetAccessPoints() []repository.AccessPoint {
 func (ap NMAccessPoint) Connect(options repository.ConnectOptions) repository.ConnectionStatus {
 	var activeConn dbus.ObjectPath
 
-    err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call(
+	err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call(
 		"org.freedesktop.NetworkManager.ActivateConnection", 0, dbus.ObjectPath("/"), ap.dev.Path, ap.Path,
 	).Store(&activeConn)
 
 	if err != nil {
-        state, reason, err := ap.addConnectionAndConnect(options)
-        if err != nil {
-            log.Println(state, reason, err)
+		state, reason, err := ap.addConnectionAndConnect(options)
+		if err != nil {
+			log.Println(state, reason, err)
 
-            return repository.ConnectionStatus(state)
-        }
+			return repository.ConnectionStatus(state)
+		}
 	}
 
-    state, reason, err := ap.dev.listenForState()
-    if err != nil {
-        log.Println(state, reason, err)
-        return repository.ConnectionStatus(state)
-    }
+	state, reason, err := ap.dev.listenForState()
+	if err != nil {
+		log.Println(state, reason, err)
+		return repository.ConnectionStatus(state)
+	}
 
-    if repository.ConnectionStatusErrFailed.Equal(state) && repository.ConnectionStatusErrNoSecrets.Equal(reason){
-        // Need auth
+	if repository.ConnectionStatusErrFailed.Equal(state) && repository.ConnectionStatusErrNoSecrets.Equal(reason) {
+		// Need auth
 
-        settings, err := ap.dev.conn.Object(nmInterface, activeConn).GetProperty("org.freedesktop.NetworkManager.Connection.Active.Connection")
-        if err != nil {
-            log.Println(err)
-            return repository.ConnectionStatusErrFailed
-        }
+		settings, err := ap.dev.conn.Object(nmInterface, activeConn).GetProperty("org.freedesktop.NetworkManager.Connection.Active.Connection")
+		if err != nil {
+			log.Println(err)
+			return repository.ConnectionStatusErrFailed
+		}
 
-        err = ap.updateConnection(settings.Value().(dbus.ObjectPath), options)
-        if err != nil {
-            log.Println(err)
-            return repository.ConnectionStatusErrFailed
-        }
+		err = ap.updateConnection(settings.Value().(dbus.ObjectPath), options)
+		if err != nil {
+			log.Println(err)
+			return repository.ConnectionStatusErrFailed
+		}
 
-        state, reason, err := ap.dev.listenForState()
-        if err != nil {
-            log.Println(state, reason, err)
-            return repository.ConnectionStatus(reason)
-        }
+		state, reason, err := ap.dev.listenForState()
+		if err != nil {
+			log.Println(state, reason, err)
+			return repository.ConnectionStatus(reason)
+		}
 
-        return repository.ConnectionStatus(reason)
-    }
+		return repository.ConnectionStatus(reason)
+	}
 
-    return repository.ConnectionStatus(state)
+	return repository.ConnectionStatus(state)
 }
 
 func (ap NMAccessPoint) updateConnection(connectionPath dbus.ObjectPath, options repository.ConnectOptions) error {
-    properties := map[string]map[string]interface{}{
-        "connection": {
-            "id": ap.GetSSID(),
-        },
-        "802-11-wireless": {
-            "mode": "infrastructure",
-            "ssid": []byte(ap.GetSSID()),
-        },
-    }
+	properties := map[string]map[string]interface{}{
+		"connection": {
+			"id": ap.GetSSID(),
+		},
+		"802-11-wireless": {
+			"mode": "infrastructure",
+			"ssid": []byte(ap.GetSSID()),
+		},
+	}
 
-    if options.Password != nil {
-        properties["802-11-wireless-security"] = map[string]interface{}{
-            "key-mgmt": "wpa-psk",
-            "psk": options.Password,
-        }
-    }
+	if options.Password != nil {
+		properties["802-11-wireless-security"] = map[string]interface{}{
+			"key-mgmt": "wpa-psk",
+			"psk":      options.Password,
+		}
+	}
 
 	err := ap.dev.conn.Object(nmInterface, connectionPath).Call("org.freedesktop.NetworkManager.Settings.Connection.Update", 0, properties).Err
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }
 
 func (ap NMAccessPoint) addConnectionAndConnect(options repository.ConnectOptions) (uint32, uint32, error) {
-    properties := map[string]map[string]interface{}{
-        "connection": {
-            "id": ap.GetSSID(),
-        },
-        "802-11-wireless": {
-            "mode": "infrastructure",
-            "ssid": []byte(ap.GetSSID()),
-        },
-    }
+	properties := map[string]map[string]interface{}{
+		"connection": {
+			"id": ap.GetSSID(),
+		},
+		"802-11-wireless": {
+			"mode": "infrastructure",
+			"ssid": []byte(ap.GetSSID()),
+		},
+	}
 
-    if options.Password != nil {
-        properties["802-11-wireless-security"] = map[string]interface{}{
-            "key-mgmt": "wpa-psk",
-            "psk": *options.Password,
-        }
-    }
+	if options.Password != nil {
+		properties["802-11-wireless-security"] = map[string]interface{}{
+			"key-mgmt": "wpa-psk",
+			"psk":      *options.Password,
+		}
+	}
 
 	err := ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call("org.freedesktop.NetworkManager.AddAndActivateConnection", 0, properties, ap.dev.Path, ap.Path).Err
 	if err != nil {
@@ -325,4 +325,17 @@ func (dev NMDevice) listenForState() (state uint32, reason uint32, err error) {
 			return state, reason, nil
 		}
 	}
+}
+
+func (ap NMAccessPoint) IsConnected() bool {
+	path, err := ap.dev.conn.Object(nmInterface, ap.Path).GetProperty("org.freedesktop.NetworkManager.Device.Wireless.ActiveAccessPoint")
+	if err != nil {
+		return false // handle it later
+	}
+
+	if path.Value().(dbus.ObjectPath) == ap.Path {
+		return true
+	}
+
+	return false
 }

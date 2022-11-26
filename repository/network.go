@@ -4,55 +4,55 @@ type DeviceType int
 type ConnectionStatus uint32
 
 const (
-    DeviceTypeUnknown DeviceType = 0
-    DeviceTypeEthernet DeviceType = 1
-    DeviceTypeWifi DeviceType = 2
-    DeviceTypeBridge DeviceType = 13
-    DeviceTypeTunnel DeviceType = 16
-    DeviceTypeBluetooth DeviceType = 5
+	DeviceTypeUnknown   DeviceType = 0
+	DeviceTypeEthernet  DeviceType = 1
+	DeviceTypeWifi      DeviceType = 2
+	DeviceTypeBridge    DeviceType = 13
+	DeviceTypeTunnel    DeviceType = 16
+	DeviceTypeBluetooth DeviceType = 5
 )
 
 const (
-    ConnectionStatusNone ConnectionStatus = 0
-    ConnectionStatusActivated ConnectionStatus = 100
-    ConnectionStatusErrNoSecrets ConnectionStatus = 7
-    ConnectionStatusErrFailed ConnectionStatus = 120
+	ConnectionStatusNone         ConnectionStatus = 0
+	ConnectionStatusActivated    ConnectionStatus = 100
+	ConnectionStatusErrNoSecrets ConnectionStatus = 7
+	ConnectionStatusErrFailed    ConnectionStatus = 120
 )
 
 func (status ConnectionStatus) Equal(v uint32) bool {
-    return uint32(status) == v
+	return uint32(status) == v
 }
 
 type Network interface {
-    GetDevices() []Device
-    Close() error
+	GetDevices() []Device
+	Close() error
 }
 
 type Device interface {
-    GetHwAddress() string
-GetDeviceType() DeviceType
+	GetHwAddress() string
+	GetDeviceType() DeviceType
 }
 
 type WiFiDevice interface {
-    Device
-    GetHwAddress() string
-    GetAccessPoints() []AccessPoint
-    GetActiveConnection() (AccessPoint, error)
-    RequestScan() error
+	Device
+	GetHwAddress() string
+	GetAccessPoints() []AccessPoint
+	GetActiveConnection() (AccessPoint, error)
+	RequestScan() error
 }
 
 type EthernetDevice interface {
-    Device
+	Device
 }
 
 type AccessPoint interface {
-    GetSSID() string
-    GetFrequency() uint
-    GetStrength() uint
-    Connect(options ConnectOptions) ConnectionStatus
+	GetSSID() string
+	GetFrequency() uint
+	GetStrength() uint
+	IsConnected() bool
+	Connect(options ConnectOptions) ConnectionStatus
 }
 
 type ConnectOptions struct {
-    Password *string
+	Password *string
 }
-
