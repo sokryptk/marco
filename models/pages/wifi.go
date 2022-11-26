@@ -8,6 +8,8 @@ import (
 	"io"
 	"me.kryptk.marco/repository"
 	"me.kryptk.marco/services"
+	"me.kryptk.marco/utils"
+	"strings"
 	"time"
 )
 
@@ -21,7 +23,9 @@ var bo = lipgloss.Border{
 type Network struct {
 	width, height int
 	selected      repository.AccessPoint
+	state         int
 	list          list.Model
+	bar           tea.Model
 	Service       repository.Network
 }
 
@@ -29,9 +33,11 @@ func NewNetwork() Network {
 	network := Network{Service: services.NewNM()}
 	_ = network.Service.GetDevices()
 
+	network.bar = bar{}
 	network.list = list.New([]list.Item{}, itemDelegate{10}, 0, 0)
 	network.list.SetFilteringEnabled(false)
 	network.list.SetShowTitle(false)
+	network.list.Styles.HelpStyle = network.list.Styles.HelpStyle.PaddingBottom(1)
 	network.list.SetShowStatusBar(false)
 	return network
 }
@@ -50,20 +56,35 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "s":
-			for _, device := range w.Service.GetDevices() {
-				switch device := device.(type) {
-				case repository.WiFiDevice:
-					_ = device.RequestScan()
-					time.Sleep(time.Second * 5)
-					cmds = append(cmds, w.list.SetItems(w.getItems()))
+		switch w.state {
+		case 0:
+			switch msg.String() {
+			case "s":
+				for _, device := range w.Service.GetDevices() {
+					switch device := device.(type) {
+					case repository.WiFiDevice:
+						_ = device.RequestScan()
+						time.Sleep(time.Second * 5)
+						cmds = append(cmds, w.list.SetItems(w.getItems()))
+					}
+				}
+			case "enter":
+				w.state = 1
+				w.bar = bar{
+					message: fmt.Sprintf("Do you want to connect to %s", w.list.SelectedItem().(item).Title),
+					options: []string{"Y", "n"},
 				}
 			}
+		case 1:
+			var cmd tea.Cmd
+			w.bar, cmd = w.bar.Update(msg)
+			cmds = append(cmds, cmd)
 		}
 	case tea.WindowSizeMsg:
-		w.list.SetSize(msg.Width, msg.Height-titleStyle.GetVerticalFrameSize())
+		w.list.SetSize(msg.Width-2, msg.Height-titleStyle.GetVerticalFrameSize()-lipgloss.Height(w.bar.View())-2)
 		w.list.SetDelegate(itemDelegate{Width: msg.Width - activeTabStyle.GetHorizontalFrameSize() - 8})
+	case optionsMsg:
+		w.state = 0
 	}
 
 	var cmd tea.Cmd
@@ -75,10 +96,18 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (w Network) View() string {
-	return lipgloss.JoinVertical(
-		lipgloss.Top,
+	renderList := []string{
 		titleStyle.Render("Wireless"),
 		w.list.View(),
+	}
+
+	if w.state == 1 {
+		renderList = append(renderList, w.bar.View())
+	}
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		renderList...,
 	)
 }
 
@@ -186,4 +215,38 @@ func (i itemDelegate) Spacing() int {
 
 func (i itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
 	return nil
+}
+
+type optionsMsg struct {
+	selected *string
+}
+
+type bar struct {
+	message string
+	options []string
+}
+
+func (b bar) Init() tea.Cmd {
+	return nil
+}
+
+func (b bar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		for _, r := range b.options {
+			if r == msg.String() {
+				return b, func() tea.Msg {
+					return optionsMsg{
+						selected: utils.Ptr(msg.String()),
+					}
+				}
+			}
+		}
+	}
+
+	return b, nil
+}
+
+func (b bar) View() string {
+	return lipgloss.NewStyle().Faint(true).AlignHorizontal(1).Render(fmt.Sprintf("%s: [%s]", b.message, strings.Join(b.options, ",")))
 }

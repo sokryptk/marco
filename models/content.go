@@ -31,6 +31,8 @@ func (c Content) Update(msg tea.Msg) (Content, tea.Cmd) {
 		c.model = msg.new
 	case tea.KeyMsg:
 		c.model, cmd = c.model.Update(msg)
+	default:
+		c.model, cmd = c.model.Update(msg)
 	}
 
 	return c, cmd
