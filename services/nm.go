@@ -328,7 +328,7 @@ func (dev NMDevice) listenForState() (state uint32, reason uint32, err error) {
 }
 
 func (ap NMAccessPoint) IsConnected() bool {
-	path, err := ap.dev.conn.Object(nmInterface, ap.Path).GetProperty("org.freedesktop.NetworkManager.Device.Wireless.ActiveAccessPoint")
+	path, err := ap.dev.conn.Object(nmInterface, ap.dev.Path).GetProperty("org.freedesktop.NetworkManager.Device.Wireless.ActiveAccessPoint")
 	if err != nil {
 		return false // handle it later
 	}
