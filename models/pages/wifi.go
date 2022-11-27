@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -37,6 +38,11 @@ func NewNetwork() Network {
 	network.list.SetFilteringEnabled(false)
 	network.list.SetShowTitle(false)
 	network.list.Styles.HelpStyle = network.list.Styles.HelpStyle.PaddingBottom(1)
+	network.list.AdditionalShortHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "scan the network")),
+		}
+	}
 	network.list.SetShowStatusBar(false)
 	return network
 }
