@@ -9,7 +9,6 @@ import (
 	"me.kryptk.marco/repository"
 	"me.kryptk.marco/services"
 	"me.kryptk.marco/utils"
-	"strings"
 	"time"
 )
 
@@ -71,8 +70,8 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				w.state = 1
 				w.bar = bar{
-					message: fmt.Sprintf("Do you want to connect to %s", w.list.SelectedItem().(item).Title),
-					options: []string{"Y", "n"},
+					message:  fmt.Sprintf("Do you want to connect to %s : (Y/n)", w.list.SelectedItem().(item).Title),
+					triggers: []string{"Y", "n"},
 				}
 			}
 		case 1:
@@ -222,8 +221,8 @@ type optionsMsg struct {
 }
 
 type bar struct {
-	message string
-	options []string
+	message  string
+	triggers []string
 }
 
 func (b bar) Init() tea.Cmd {
@@ -233,7 +232,7 @@ func (b bar) Init() tea.Cmd {
 func (b bar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		for _, r := range b.options {
+		for _, r := range b.triggers {
 			if r == msg.String() {
 				return b, func() tea.Msg {
 					return optionsMsg{
@@ -248,5 +247,5 @@ func (b bar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (b bar) View() string {
-	return lipgloss.NewStyle().Faint(true).AlignHorizontal(1).Render(fmt.Sprintf("%s: [%s]", b.message, strings.Join(b.options, ",")))
+	return lipgloss.NewStyle().Faint(true).PaddingBottom(1).Render(fmt.Sprintf("%s", b.message))
 }
