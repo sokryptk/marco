@@ -14,6 +14,7 @@ import (
 )
 
 var titleStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("5")).Padding(1, 0)
+var title = titleStyle.Render("Wireless")
 var tabStyle = lipgloss.NewStyle().PaddingLeft(1).Bold(true)
 var activeTabStyle = tabStyle.Copy().Foreground(lipgloss.Color("5")).Border(bo, false, false, false, true).BorderForeground(lipgloss.Color("5"))
 var bo = lipgloss.Border{
@@ -86,7 +87,7 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 	case tea.WindowSizeMsg:
-		w.list.SetSize(msg.Width-2, msg.Height-titleStyle.GetVerticalFrameSize()-lipgloss.Height(w.bar.View())-2)
+		w.list.SetSize(msg.Width-2, msg.Height-lipgloss.Height(title)-lipgloss.Height(w.bar.View())-2)
 		w.list.SetDelegate(itemDelegate{Width: msg.Width - activeTabStyle.GetHorizontalFrameSize() - 8})
 	case optionsMsg:
 		w.state = 0
@@ -102,7 +103,7 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (w Network) View() string {
 	renderList := []string{
-		titleStyle.Render("Wireless"),
+		title,
 		w.list.View(),
 	}
 
