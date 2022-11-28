@@ -1,4 +1,4 @@
-package models
+package layout
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,7 +10,7 @@ import (
 
 var body = lipgloss.NewStyle().Border(lipgloss.ThickBorder()).Padding(1, 3).Margin(1, 3)
 
-type pageChangeMsg struct {
+type PageSwitchMsg struct {
 	new tea.Model
 }
 
@@ -55,13 +55,13 @@ func (h Home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				h.Selected = selected
 				h.Sidebar.selected = selected
 
-				h.Content, _ = h.Content.Update(pageChangeMsg{h.Pages[selected]})
+				h.Content, _ = h.Content.Update(PageSwitchMsg{h.Pages[selected]})
 			case "down":
 				selected := (h.Selected + 1) % len(h.Pages)
 				h.Selected = selected
 				h.Sidebar.selected = selected
 
-				h.Content, _ = h.Content.Update(pageChangeMsg{h.Pages[selected]})
+				h.Content, _ = h.Content.Update(PageSwitchMsg{h.Pages[selected]})
 			}
 		}
 

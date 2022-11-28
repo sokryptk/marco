@@ -1,4 +1,4 @@
-package models
+package layout
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,7 +27,7 @@ func (c Content) Update(msg tea.Msg) (Content, tea.Cmd) {
 		msg.Height -= content.GetVerticalFrameSize()
 
 		c.model, cmd = c.model.Update(msg)
-	case pageChangeMsg:
+	case PageSwitchMsg:
 		c.model = msg.new
 	case tea.KeyMsg:
 		c.model, cmd = c.model.Update(msg)

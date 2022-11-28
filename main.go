@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"me.kryptk.marco/models"
+	"me.kryptk.marco/models/layout"
 	"os"
 )
 
@@ -14,7 +14,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	home := models.NewHome()
+	home := layout.NewHome()
 	defer home.Close()
 
 	p := tea.NewProgram(home, tea.WithAltScreen())

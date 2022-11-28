@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"io"
-	"me.kryptk.marco/models"
+	"me.kryptk.marco/models/widgets"
 	"me.kryptk.marco/repository"
 	"me.kryptk.marco/services"
 	"time"
@@ -34,7 +34,7 @@ func NewNetwork() Network {
 	network := Network{Service: services.NewNM()}
 	_ = network.Service.GetDevices()
 
-	network.bar = models.Bar{}
+	network.bar = widgets.Bar{}
 	network.list = list.New([]list.Item{}, itemDelegate{10}, 0, 0)
 	network.list.SetFilteringEnabled(false)
 	network.list.SetShowTitle(false)
@@ -76,7 +76,7 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "enter":
 				w.state = 1
-				w.bar = models.Bar{
+				w.bar = widgets.Bar{
 					Message:  fmt.Sprintf("Do you want to connect to %s : (Y/n)", w.list.SelectedItem().(item).Title),
 					Triggers: []string{"Y", "n"},
 				}
