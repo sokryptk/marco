@@ -39,7 +39,7 @@ func (c Content) Update(msg tea.Msg) (Content, tea.Cmd) {
 }
 
 func (c Content) View() string {
-	width, height := content.GetHorizontalBorderSize(), content.GetVerticalBorderSize()
+	width, height := content.GetHorizontalFrameSize(), content.GetVerticalFrameSize()
 
 	return content.Height(c.height - height).Width(c.width - width).AlignHorizontal(0.5).Render(c.model.View())
 }
