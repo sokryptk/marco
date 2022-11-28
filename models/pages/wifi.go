@@ -132,10 +132,11 @@ func (w Network) getItems() []list.Item {
 
 			for _, p := range points {
 				items = append(items, item{
-					Title:     p.GetSSID(),
-					Strength:  renderWifi(p.GetStrength()),
-					Frequency: fmt.Sprintf("%0.1fGHz", float64(p.GetFrequency())/float64(1000)),
-					Connected: p.IsConnected(),
+					AccessPoint: p,
+					Title:       p.GetSSID(),
+					Strength:    renderWifi(p.GetStrength()),
+					Frequency:   fmt.Sprintf("%0.1fGHz", float64(p.GetFrequency())/float64(1000)),
+					Connected:   p.IsConnected(),
 				})
 			}
 		}
@@ -156,10 +157,11 @@ func renderWifi(strength uint) string {
 }
 
 type item struct {
-	Title     string
-	Strength  string
-	Frequency string
-	Connected bool
+	AccessPoint repository.AccessPoint
+	Title       string
+	Strength    string
+	Frequency   string
+	Connected   bool
 }
 
 func (i item) FilterValue() string {
