@@ -7,9 +7,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"io"
+	"me.kryptk.marco/models"
 	"me.kryptk.marco/repository"
 	"me.kryptk.marco/services"
-	"me.kryptk.marco/utils"
 	"time"
 )
 
@@ -33,7 +33,7 @@ func NewNetwork() Network {
 	network := Network{Service: services.NewNM()}
 	_ = network.Service.GetDevices()
 
-	network.bar = bar{}
+	network.bar = models.Bar{}
 	network.list = list.New([]list.Item{}, itemDelegate{10}, 0, 0)
 	network.list.SetFilteringEnabled(false)
 	network.list.SetShowTitle(false)
@@ -75,9 +75,9 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "enter":
 				w.state = 1
-				w.bar = bar{
-					message:  fmt.Sprintf("Do you want to connect to %s : (Y/n)", w.list.SelectedItem().(item).Title),
-					triggers: []string{"Y", "n"},
+				w.bar = models.Bar{
+					Message:  fmt.Sprintf("Do you want to connect to %s : (Y/n)", w.list.SelectedItem().(item).Title),
+					Triggers: []string{"Y", "n"},
 				}
 			}
 		case 1:
@@ -224,34 +224,4 @@ func (i itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
 
 type optionsMsg struct {
 	selected *string
-}
-
-type bar struct {
-	message  string
-	triggers []string
-}
-
-func (b bar) Init() tea.Cmd {
-	return nil
-}
-
-func (b bar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		for _, r := range b.triggers {
-			if r == msg.String() {
-				return b, func() tea.Msg {
-					return optionsMsg{
-						selected: utils.Ptr(msg.String()),
-					}
-				}
-			}
-		}
-	}
-
-	return b, nil
-}
-
-func (b bar) View() string {
-	return lipgloss.NewStyle().Faint(true).PaddingBottom(1).Render(fmt.Sprintf("%s", b.message))
 }
