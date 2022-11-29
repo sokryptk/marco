@@ -229,7 +229,7 @@ func (ap NMAccessPoint) Connect(options repository.ConnectOptions) repository.Co
 		}
 
 		err = ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call(
-			"org.freedesktop.NetworkManager.ActivateConnection", 0, dbus.ObjectPath("/"), ap.dev.Path, ap.Path,
+			"org.freedesktop.NetworkManager.ActivateConnection", 0, settings.Value().(dbus.ObjectPath), ap.dev.Path, ap.Path,
 		).Err
 
 		if err != nil {
