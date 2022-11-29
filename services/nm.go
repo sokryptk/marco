@@ -239,10 +239,10 @@ func (ap NMAccessPoint) Connect(options repository.ConnectOptions) repository.Co
 		state, reason, err := ap.dev.listenForState()
 		if err != nil {
 			log.Println(state, reason, err)
-			return repository.ConnectionStatus(reason)
+			return repository.ConnectionStatus(state)
 		}
 
-		return repository.ConnectionStatus(reason)
+		return repository.ConnectionStatus(state)
 	}
 
 	return repository.ConnectionStatus(state)
@@ -323,7 +323,6 @@ func (dev NMDevice) listenForState() (state uint32, reason uint32, err error) {
 	for {
 		select {
 		case signal := <-signals:
-			log.Println(signal.Body)
 			state = signal.Body[0].(uint32)
 			reason = signal.Body[2].(uint32)
 
