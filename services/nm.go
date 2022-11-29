@@ -213,7 +213,7 @@ func (ap NMAccessPoint) Connect(options repository.ConnectOptions) repository.Co
 		return repository.ConnectionStatus(state)
 	}
 
-	if repository.ConnectionStatusErrFailed.Equal(state) && repository.ConnectionStatusErrNoSecrets.Equal(reason) {
+	if repository.ConnectionStatusErrNoSecrets.Equal(reason) || repository.ConnectionStatusNeedAuth.Equal(state) {
 		// Need auth
 
 		settings, err := ap.dev.conn.Object(nmInterface, activeConn).GetProperty("org.freedesktop.NetworkManager.Connection.Active.Connection")
@@ -225,6 +225,14 @@ func (ap NMAccessPoint) Connect(options repository.ConnectOptions) repository.Co
 		err = ap.updateConnection(settings.Value().(dbus.ObjectPath), options)
 		if err != nil {
 			log.Println(err)
+			return repository.ConnectionStatusErrFailed
+		}
+
+		err = ap.dev.conn.Object(nmInterface, "/org/freedesktop/NetworkManager").Call(
+			"org.freedesktop.NetworkManager.ActivateConnection", 0, dbus.ObjectPath("/"), ap.dev.Path, ap.Path,
+		).Err
+
+		if err != nil {
 			return repository.ConnectionStatusErrFailed
 		}
 
@@ -315,10 +323,11 @@ func (dev NMDevice) listenForState() (state uint32, reason uint32, err error) {
 	for {
 		select {
 		case signal := <-signals:
+			log.Println(signal.Body)
 			state = signal.Body[0].(uint32)
 			reason = signal.Body[2].(uint32)
 
-			if repository.ConnectionStatusErrFailed.Equal(state) || repository.ConnectionStatusActivated.Equal(state) {
+			if repository.ConnectionStatusErrFailed.Equal(state) || repository.ConnectionStatusActivated.Equal(state) || repository.ConnectionStatusNeedAuth.Equal(state) {
 				return state, reason, nil
 			}
 		case <-time.After(time.Second * 3):
