@@ -213,7 +213,13 @@ func (ap NMAccessPoint) Connect(options repository.ConnectOptions) repository.Co
 		return repository.ConnectionStatus(state)
 	}
 
-	if repository.ConnectionStatusErrNoSecrets.Equal(reason) || repository.ConnectionStatusNeedAuth.Equal(state) {
+	if options.Password == nil {
+		if repository.ConnectionStatusErrFailed.Equal(state) && repository.ConnectionStatusErrNoSecrets.Equal(reason) {
+			return repository.ConnectionStatusNeedAuth
+		}
+	}
+
+	if (repository.ConnectionStatusErrFailed.Equal(state) && repository.ConnectionStatusErrNoSecrets.Equal(reason)) || repository.ConnectionStatusNeedAuth.Equal(state) {
 		// Need auth
 
 		settings, err := ap.dev.conn.Object(nmInterface, activeConn).GetProperty("org.freedesktop.NetworkManager.Connection.Active.Connection")
