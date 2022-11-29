@@ -17,6 +17,7 @@ const (
 	ConnectionStatusActivated    ConnectionStatus = 100
 	ConnectionStatusErrNoSecrets ConnectionStatus = 7
 	ConnectionStatusErrFailed    ConnectionStatus = 120
+	ConnectionStatusNeedAuth     ConnectionStatus = 60
 )
 
 func (status ConnectionStatus) Equal(v uint32) bool {
