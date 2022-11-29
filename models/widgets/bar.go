@@ -11,10 +11,10 @@ import (
 type InputType int
 
 const (
-	inputTypeNone InputType = iota
-	inputTypeChoice
-	inputTypeText
-	inputTypePassword
+	InputTypeNone InputType = iota
+	InputTypeChoice
+	InputTypeText
+	InputTypePassword
 )
 
 type OutputType interface {
@@ -37,12 +37,14 @@ func NewBar(message string, inputType InputType) Bar {
 		InputType: inputType,
 	}
 
-	if inputType == inputTypeText || inputType == inputTypePassword {
+	if inputType == InputTypeText || inputType == InputTypePassword {
 		bar.input = textinput.New()
 	}
 
-	if inputType == inputTypePassword {
+	if inputType == InputTypePassword {
 		bar.input.EchoMode = textinput.EchoPassword
+		bar.input.Prompt = ""
+		bar.input.Focus()
 	}
 
 	return bar
@@ -56,13 +58,13 @@ func (b Bar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch b.InputType {
-		case inputTypeChoice:
+		case InputTypeChoice:
 			return b, func() tea.Msg {
 				return BarMsg[bool]{
 					Output: msg.Type == tea.KeyEnter,
 				}
 			}
-		case inputTypeText:
+		case InputTypeText, InputTypePassword:
 			if msg.Type == tea.KeyEnter {
 				return b, func() tea.Msg {
 					return BarMsg[string]{
@@ -71,8 +73,9 @@ func (b Bar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			b.input, _ = b.input.Update(msg)
-			return b, nil
+			var cmd tea.Cmd
+			b.input, cmd = b.input.Update(msg)
+			return b, cmd
 		}
 	}
 
@@ -82,7 +85,7 @@ func (b Bar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (b Bar) View() string {
 	str := fmt.Sprintf("%s", b.Message)
 
-	if b.InputType == inputTypePassword || b.InputType == inputTypeText {
+	if b.InputType == InputTypePassword || b.InputType == InputTypeText {
 		str += fmt.Sprintf(": %s", b.input.View())
 	}
 
