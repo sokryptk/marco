@@ -326,10 +326,10 @@ func (dev NMDevice) listenForState() (state uint32, reason uint32, err error) {
 			state = signal.Body[0].(uint32)
 			reason = signal.Body[2].(uint32)
 
-			if repository.ConnectionStatusErrFailed.Equal(state) || repository.ConnectionStatusActivated.Equal(state) || repository.ConnectionStatusNeedAuth.Equal(state) {
+			if repository.ConnectionStatusErrFailed.Equal(state) || repository.ConnectionStatusActivated.Equal(state) {
 				return state, reason, nil
 			}
-		case <-time.After(time.Second * 3):
+		case <-time.After(time.Second * 10):
 			return state, reason, nil
 		}
 	}
