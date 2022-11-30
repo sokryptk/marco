@@ -22,18 +22,21 @@ type OutputType interface {
 }
 
 type BarMsg[T OutputType] struct {
+	ID     string
 	Output T
 }
 
 type Bar struct {
+	ID        string
 	Message   string
 	input     textinput.Model
 	InputType InputType
 }
 
-func NewBar(message string, inputType InputType) Bar {
+func NewBar(message string, inputType InputType, ID string) Bar {
 	bar := Bar{
 		Message:   message,
+		ID:        ID,
 		InputType: inputType,
 	}
 
@@ -61,6 +64,7 @@ func (b Bar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case InputTypeChoice:
 			return b, func() tea.Msg {
 				return BarMsg[bool]{
+					ID:     b.ID,
 					Output: msg.Type == tea.KeyEnter,
 				}
 			}
@@ -68,6 +72,7 @@ func (b Bar) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Type == tea.KeyEnter {
 				return b, func() tea.Msg {
 					return BarMsg[string]{
+						ID:     b.ID,
 						Output: b.input.Value(),
 					}
 				}
