@@ -10,6 +10,7 @@ import (
 	"me.kryptk.marco/models/widgets"
 	"me.kryptk.marco/repository"
 	"me.kryptk.marco/services"
+	"me.kryptk.marco/utils"
 	"time"
 )
 
@@ -21,12 +22,23 @@ var bo = lipgloss.Border{
 	Left: "▐",
 }
 
+const disconnectID string = "disconnect"
+
+type networkMsg struct {
+	timeout time.Duration
+	hideBar bool
+	bar     widgets.Bar
+}
+
+type hideBarMsg bool
+
 type Network struct {
 	width, height int
 	selected      repository.AccessPoint
 	state         int
 	list          list.Model
 	bar           tea.Model
+	barState      int
 	Service       repository.Network
 }
 
@@ -75,12 +87,27 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case "enter":
-				w.state = 1
-				w.bar = widgets.Bar{
-					Message:  fmt.Sprintf("Do you want to connect to %s : (Y/n)", w.list.SelectedItem().(item).Title),
-					Triggers: []string{"Y", "n"},
+				currentItem := w.list.SelectedItem().(item).AccessPoint
+				var netMsg networkMsg
+
+				if !currentItem.IsConnected() {
+					netMsg.bar = widgets.NewBar("Connecting...", widgets.InputTypeNone, "")
+					cmds = append(cmds, func() tea.Msg {
+						return connectWithBar(w, repository.ConnectOptions{})
+					})
+				} else {
+					netMsg.bar = widgets.NewBar(fmt.Sprintf("Disconnect from %s?", currentItem.GetSSID()), widgets.InputTypeChoice, disconnectID)
 				}
+
+				cmds = append(cmds, func() tea.Msg {
+					return netMsg
+				})
 			}
+
+			var cmd tea.Cmd
+			w.list, cmd = w.list.Update(msg)
+
+			cmds = append(cmds, cmd)
 		case 1:
 			var cmd tea.Cmd
 			w.bar, cmd = w.bar.Update(msg)
@@ -89,14 +116,63 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		w.list.SetSize(msg.Width-2, msg.Height-lipgloss.Height(title)-lipgloss.Height(w.bar.View())-2)
 		w.list.SetDelegate(itemDelegate{Width: msg.Width - activeTabStyle.GetHorizontalFrameSize() - 8})
-	case optionsMsg:
-		w.state = 0
+	case widgets.BarMsg[bool]:
+		currentItem := w.list.SelectedItem().(item).AccessPoint
+		if msg.ID == disconnectID {
+			var timeout time.Duration
+			var bar widgets.Bar
+
+			if msg.Output {
+				timeout = time.Second * 3
+			}
+
+			netMsg := networkMsg{
+				hideBar: msg.Output,
+				timeout: timeout,
+				bar:     bar,
+			}
+
+			if !msg.Output {
+				cmds = append(cmds, func() tea.Msg {
+					return netMsg
+				})
+
+				break
+			}
+
+			err := currentItem.Disconnect()
+			if err != nil {
+				netMsg.bar = widgets.NewBar(fmt.Sprintf("Error while disconnecting : %v", err), widgets.InputTypeNone, "")
+			} else {
+				netMsg.bar = widgets.NewBar(fmt.Sprintf("Disconnected from %s", currentItem.GetSSID()), widgets.InputTypeNone, "")
+			}
+
+			cmds = append(cmds, func() tea.Msg {
+				return netMsg
+			})
+		}
+
+	case widgets.BarMsg[string]:
+		cmds = append(cmds, func() tea.Msg {
+			return connectWithBar(w, repository.ConnectOptions{Password: utils.Ptr(msg.Output)})
+		})
+	case networkMsg:
+		if msg.bar.Message != "" {
+			w.bar = msg.bar
+		}
+
+		cmds = append(cmds, func() tea.Msg {
+			time.Sleep(msg.timeout)
+			return hideBarMsg(msg.hideBar)
+		})
+
+	case hideBarMsg:
+		if msg {
+			w.state = 0
+		} else {
+			w.state = 1
+		}
 	}
-
-	var cmd tea.Cmd
-	w.list, cmd = w.list.Update(msg)
-
-	cmds = append(cmds, cmd)
 
 	return w, tea.Batch(cmds...)
 }
@@ -225,6 +301,25 @@ func (i itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
 	return nil
 }
 
-type optionsMsg struct {
-	selected *string
+func connectWithBar(w Network, options repository.ConnectOptions) networkMsg {
+	status := w.list.SelectedItem().(item).AccessPoint.Connect(options)
+
+	switch status {
+	case repository.ConnectionStatusNeedAuth:
+		return networkMsg{
+			bar: widgets.NewBar(fmt.Sprintf("Password for %s", w.list.SelectedItem().(item).Title), widgets.InputTypePassword, ""),
+		}
+	case repository.ConnectionStatusActivated:
+		return networkMsg{
+			hideBar: true,
+			timeout: time.Second * 3,
+			bar:     widgets.NewBar("Activated connection!", widgets.InputTypeNone, ""),
+		}
+	default:
+		return networkMsg{
+			hideBar: true,
+			timeout: time.Second * 3,
+			bar:     widgets.NewBar(fmt.Sprintf("Connection failed for %s, err: %d", w.list.SelectedItem().(item).Title, status), widgets.InputTypeNone, ""),
+		}
+	}
 }
