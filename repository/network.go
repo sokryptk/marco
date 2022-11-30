@@ -52,6 +52,7 @@ type AccessPoint interface {
 	GetStrength() uint
 	IsConnected() bool
 	Connect(options ConnectOptions) ConnectionStatus
+	Disconnect() error
 }
 
 type ConnectOptions struct {

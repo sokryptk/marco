@@ -45,6 +45,13 @@ type NMAccessPoint struct {
 	Path dbus.ObjectPath
 }
 
+func (ap NMAccessPoint) Disconnect() error {
+	return ap.dev.conn.Object(nmInterface, ap.dev.Path).Call(
+		"org.freedesktop.NetworkManager.Device.Disconnect",
+		0,
+	).Err
+}
+
 func (ap NMAccessPoint) GetSSID() (s string) {
 	v, err := ap.dev.conn.Object(nmInterface, ap.Path).GetProperty("org.freedesktop.NetworkManager.AccessPoint.Ssid")
 	if err != nil {
