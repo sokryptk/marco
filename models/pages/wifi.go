@@ -14,13 +14,7 @@ import (
 	"time"
 )
 
-var titleStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("5")).Padding(1, 0)
 var title = titleStyle.Render("Wireless")
-var tabStyle = lipgloss.NewStyle().PaddingLeft(1).Bold(true)
-var activeTabStyle = tabStyle.Copy().Foreground(lipgloss.Color("5")).Border(bo, false, false, false, true).BorderForeground(lipgloss.Color("5"))
-var bo = lipgloss.Border{
-	Left: "▐",
-}
 
 const disconnectID string = "disconnect"
 
