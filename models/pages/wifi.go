@@ -85,12 +85,16 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				var netMsg networkMsg
 
 				if !currentItem.IsConnected() {
-					netMsg.bar = widgets.NewBar("Connecting...", widgets.InputTypeNone, "")
+					netMsg.bar = widgets.NewBar(widgets.BarOpts{Message: "Connecting..."})
 					cmds = append(cmds, func() tea.Msg {
 						return connectWithBar(w, repository.ConnectOptions{})
 					})
 				} else {
-					netMsg.bar = widgets.NewBar(fmt.Sprintf("Disconnect from %s?", currentItem.GetSSID()), widgets.InputTypeChoice, disconnectID)
+					netMsg.bar = widgets.NewBar(widgets.BarOpts{
+						Message:   fmt.Sprintf("Disconnect from %s?", currentItem.GetSSID()),
+						InputType: widgets.InputTypeChoice,
+						ID:        disconnectID,
+					})
 				}
 
 				cmds = append(cmds, func() tea.Msg {
@@ -136,9 +140,9 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			err := currentItem.Disconnect()
 			if err != nil {
-				netMsg.bar = widgets.NewBar(fmt.Sprintf("Error while disconnecting : %v", err), widgets.InputTypeNone, "")
+				netMsg.bar = widgets.NewBar(widgets.BarOpts{Message: fmt.Sprintf("Error while disconnecting : %v", err)})
 			} else {
-				netMsg.bar = widgets.NewBar(fmt.Sprintf("Disconnected from %s", currentItem.GetSSID()), widgets.InputTypeNone, "")
+				netMsg.bar = widgets.NewBar(widgets.BarOpts{Message: fmt.Sprintf("Disconnected from %s", currentItem.GetSSID())})
 			}
 
 			cmds = append(cmds, func() tea.Msg {
@@ -301,19 +305,24 @@ func connectWithBar(w Network, options repository.ConnectOptions) networkMsg {
 	switch status {
 	case repository.ConnectionStatusNeedAuth:
 		return networkMsg{
-			bar: widgets.NewBar(fmt.Sprintf("Password for %s", w.list.SelectedItem().(item).Title), widgets.InputTypePassword, ""),
+			bar: widgets.NewBar(widgets.BarOpts{
+				Message:   fmt.Sprintf("Password for %s", w.list.SelectedItem().(item).Title),
+				InputType: widgets.InputTypePassword,
+			}),
 		}
 	case repository.ConnectionStatusActivated:
 		return networkMsg{
 			hideBar: true,
 			timeout: time.Second * 3,
-			bar:     widgets.NewBar("Activated connection!", widgets.InputTypeNone, ""),
+			bar:     widgets.NewBar(widgets.BarOpts{Message: "Activated connection!"}),
 		}
 	default:
 		return networkMsg{
 			hideBar: true,
 			timeout: time.Second * 3,
-			bar:     widgets.NewBar(fmt.Sprintf("Connection failed for %s, err: %d", w.list.SelectedItem().(item).Title, status), widgets.InputTypeNone, ""),
+			bar: widgets.NewBar(widgets.BarOpts{
+				Message: fmt.Sprintf("Connection failed for %s, err: %d", w.list.SelectedItem().(item).Title, status),
+			}),
 		}
 	}
 }

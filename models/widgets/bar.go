@@ -26,6 +26,8 @@ type BarMsg[T OutputType] struct {
 	Output T
 }
 
+type BarOpts Bar
+
 type Bar struct {
 	ID        string
 	Message   string
@@ -33,24 +35,20 @@ type Bar struct {
 	InputType InputType
 }
 
-func NewBar(message string, inputType InputType, ID string) Bar {
-	bar := Bar{
-		Message:   message,
-		ID:        ID,
-		InputType: inputType,
-	}
+func NewBar(opts BarOpts) Bar {
+	bar := opts
 
-	if inputType == InputTypeText || inputType == InputTypePassword {
+	if opts.InputType == InputTypeText || opts.InputType == InputTypePassword {
 		bar.input = textinput.New()
 	}
 
-	if inputType == InputTypePassword {
+	if opts.InputType == InputTypePassword {
 		bar.input.EchoMode = textinput.EchoPassword
 		bar.input.Prompt = ""
 		bar.input.Focus()
 	}
 
-	return bar
+	return Bar(bar)
 }
 
 func (b Bar) Init() tea.Cmd {

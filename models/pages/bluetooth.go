@@ -76,7 +76,10 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if curItem.Connected() {
 				dBar := func() tea.Msg {
 					return networkMsg{
-						bar: widgets.NewBar(fmt.Sprintf("Disconnect from %s", curItem.Name), widgets.InputTypeChoice, ""),
+						bar: widgets.NewBar(widgets.BarOpts{
+							Message:   fmt.Sprintf("Disconnect from %s", curItem.Name),
+							InputType: widgets.InputTypeChoice,
+						}),
 					}
 				}
 
@@ -87,7 +90,9 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			connectingBar := func() tea.Msg {
 				return networkMsg{
-					bar: widgets.NewBar(fmt.Sprintf("Connecting to %s", curItem.Name), widgets.InputTypeNone, ""),
+					bar: widgets.NewBar(widgets.BarOpts{
+						Message: fmt.Sprintf("Connecting to %s", curItem.Name),
+					}),
 				}
 			}
 
@@ -97,12 +102,16 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return networkMsg{
 						hideBar: true,
 						timeout: time.Second * 3,
-						bar:     widgets.NewBar(fmt.Sprintf("Error connecting : %v", err), widgets.InputTypeNone, ""),
+						bar: widgets.NewBar(widgets.BarOpts{
+							Message: fmt.Sprintf("Error connecting : %v", err),
+						}),
 					}
 				}
 
 				return networkMsg{
-					bar: widgets.NewBar(fmt.Sprintf("Successfully connected to %s", curItem.Name), widgets.InputTypeNone, ""),
+					bar: widgets.NewBar(widgets.BarOpts{
+						Message: fmt.Sprintf("Successfully connected to %s", curItem.Name),
+					}),
 				}
 			}
 
@@ -127,9 +136,13 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			err := bt.Selected.Disconnect()
 			var bar widgets.Bar
 			if err != nil {
-				bar = widgets.NewBar("Disconnected", widgets.InputTypeNone, "")
+				bar = widgets.NewBar(widgets.BarOpts{
+					Message: "Disconnected",
+				})
 			} else {
-				bar = widgets.NewBar(fmt.Sprintf("Error disconnecting, %v", err), widgets.InputTypeNone, "")
+				bar = widgets.NewBar(widgets.BarOpts{
+					Message: fmt.Sprintf("Error disconnecting, %v", err),
+				})
 			}
 
 			cmds = append(cmds, func() tea.Msg {
