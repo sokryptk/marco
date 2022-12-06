@@ -79,8 +79,8 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if curItem.Connected() {
 				dBar := func() tea.Msg {
-					return networkMsg{
-						bar: widgets.NewBar(widgets.BarOpts{
+					return widgets.BarMsg[widgets.Bar]{
+						Output: widgets.NewBar(widgets.BarOpts{
 							Message:   fmt.Sprintf("Disconnect from %s", curItem.Name),
 							InputType: widgets.InputTypeChoice,
 						}),
@@ -93,8 +93,8 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			connectingBar := func() tea.Msg {
-				return networkMsg{
-					bar: widgets.NewBar(widgets.BarOpts{
+				return widgets.BarMsg[widgets.Bar]{
+					Output: widgets.NewBar(widgets.BarOpts{
 						Message: fmt.Sprintf("Connecting to %s", curItem.Name),
 					}),
 				}
@@ -113,8 +113,8 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					})
 				}
 
-				return networkMsg{
-					bar: bar,
+				return widgets.BarMsg[widgets.Bar]{
+					Output: bar,
 				}
 			}
 
@@ -123,11 +123,10 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		bt.list.SetSize(msg.Width, msg.Height-lipgloss.Height(btTitle)-lipgloss.Height(bt.bar.View()))
 		bt.list.SetDelegate(btDelegate{Width: msg.Width - activeTabStyle.GetHorizontalFrameSize() - 6})
-	case networkMsg:
-		if msg.bar.Message != "" {
-			bt.bar = msg.bar
-			cmds = append(cmds, bt.bar.Init())
-		}
+	case widgets.BarMsg[widgets.Bar]:
+		bt.bar = msg.Output
+		cmds = append(cmds, bt.bar.Init())
+
 	case widgets.BarMsg[widgets.HideBar]:
 		bt.bar = widgets.Bar{}
 	case widgets.BarMsg[bool]:
@@ -143,8 +142,8 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			bar = widgets.NewBar(widgets.BarOpts{Message: message, Timeout: time.Second * 3})
 
-			netMsg := networkMsg{
-				bar: bar,
+			netMsg := widgets.BarMsg[widgets.Bar]{
+				Output: bar,
 			}
 
 			cmds = append(cmds, func() tea.Msg {
@@ -269,7 +268,7 @@ func (b btDelegate) Spacing() int {
 	return 1
 }
 
-func (b btDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+func (b btDelegate) Update(tea.Msg, *list.Model) tea.Cmd {
 	return nil
 }
 

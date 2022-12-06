@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"io"
+	"log"
 	"me.kryptk.marco/models/widgets"
 	"me.kryptk.marco/repository"
 	"me.kryptk.marco/services"
@@ -17,15 +18,6 @@ import (
 var title = titleStyle.Render("Wireless")
 
 const disconnectID string = "disconnect"
-
-// Deprecated : Use Bar with timeout and Init() instead
-type networkMsg struct {
-	timeout time.Duration
-	hideBar bool
-	bar     widgets.Bar
-}
-
-type hideBarMsg bool
 
 type Network struct {
 	width, height int
@@ -83,15 +75,15 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "enter":
 				currentItem := w.list.SelectedItem().(item).AccessPoint
-				var netMsg networkMsg
+				var barMsg widgets.BarMsg[widgets.Bar]
 
 				if !currentItem.IsConnected() {
-					netMsg.bar = widgets.NewBar(widgets.BarOpts{Message: "Connecting..."})
+					barMsg.Output = widgets.NewBar(widgets.BarOpts{Message: "Connecting..."})
 					cmds = append(cmds, func() tea.Msg {
 						return connectWithBar(w, repository.ConnectOptions{})
 					})
 				} else {
-					netMsg.bar = widgets.NewBar(widgets.BarOpts{
+					barMsg.Output = widgets.NewBar(widgets.BarOpts{
 						Message:   fmt.Sprintf("Disconnect from %s?", currentItem.GetSSID()),
 						InputType: widgets.InputTypeChoice,
 						ID:        disconnectID,
@@ -99,7 +91,7 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				cmds = append(cmds, func() tea.Msg {
-					return netMsg
+					return barMsg
 				})
 			}
 
@@ -116,38 +108,32 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		w.list.SetSize(msg.Width-2, msg.Height-lipgloss.Height(title)-lipgloss.Height(w.bar.View())-2)
 		w.list.SetDelegate(itemDelegate{Width: msg.Width - activeTabStyle.GetHorizontalFrameSize() - 8})
 	case widgets.BarMsg[bool]:
+		log.
+			Println("sup my homie")
 		currentItem := w.list.SelectedItem().(item).AccessPoint
 		if msg.ID == disconnectID {
-			var timeout time.Duration
-			var bar widgets.Bar
-
-			if msg.Output {
-				timeout = time.Second * 3
-			}
-
-			netMsg := networkMsg{
-				hideBar: msg.Output,
-				timeout: timeout,
-				bar:     bar,
-			}
-
+			log.Println(msg.Output)
 			if !msg.Output {
 				cmds = append(cmds, func() tea.Msg {
-					return netMsg
+					return widgets.BarMsg[widgets.HideBar]{}
 				})
 
 				break
 			}
 
+			var bar widgets.Bar
 			err := currentItem.Disconnect()
 			if err != nil {
-				netMsg.bar = widgets.NewBar(widgets.BarOpts{Message: fmt.Sprintf("Error while disconnecting : %v", err)})
+				bar = widgets.NewBar(widgets.BarOpts{Message: fmt.Sprintf("Error while disconnecting : %v", err)})
 			} else {
-				netMsg.bar = widgets.NewBar(widgets.BarOpts{Message: fmt.Sprintf("Disconnected from %s", currentItem.GetSSID())})
+				bar = widgets.NewBar(widgets.BarOpts{Message: fmt.Sprintf("Disconnected from %s", currentItem.GetSSID())})
 			}
 
+			bar.Timeout = time.Second * 3
 			cmds = append(cmds, func() tea.Msg {
-				return netMsg
+				return widgets.BarMsg[widgets.Bar]{
+					Output: bar,
+				}
 			})
 		}
 
@@ -155,22 +141,18 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, func() tea.Msg {
 			return connectWithBar(w, repository.ConnectOptions{Password: utils.Ptr(msg.Output)})
 		})
-	case networkMsg:
-		if msg.bar.Message != "" {
-			w.bar = msg.bar
-		}
+	case widgets.BarMsg[widgets.Bar]:
+		w.bar = msg.Output
 
-		cmds = append(cmds, func() tea.Msg {
-			time.Sleep(msg.timeout)
-			return hideBarMsg(msg.hideBar)
-		})
-
-	case hideBarMsg:
-		if msg {
-			w.state = 0
-		} else {
+		if msg.Output.Timeout == 0 {
 			w.state = 1
+		} else {
+			w.state = 0
 		}
+
+		cmds = append(cmds, w.bar.Init())
+	case widgets.BarMsg[widgets.HideBar]:
+		w.bar = widgets.Bar{}
 	}
 
 	return w, tea.Batch(cmds...)
@@ -182,7 +164,7 @@ func (w Network) View() string {
 		w.list.View(),
 	}
 
-	if w.state == 1 {
+	if w.bar.View() != "" {
 		renderList = append(renderList, w.bar.View())
 	}
 
@@ -300,29 +282,26 @@ func (i itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
 	return nil
 }
 
-func connectWithBar(w Network, options repository.ConnectOptions) networkMsg {
+func connectWithBar(w Network, options repository.ConnectOptions) widgets.BarMsg[widgets.Bar] {
 	status := w.list.SelectedItem().(item).AccessPoint.Connect(options)
 
 	switch status {
 	case repository.ConnectionStatusNeedAuth:
-		return networkMsg{
-			bar: widgets.NewBar(widgets.BarOpts{
+		return widgets.BarMsg[widgets.Bar]{
+			Output: widgets.NewBar(widgets.BarOpts{
 				Message:   fmt.Sprintf("Password for %s", w.list.SelectedItem().(item).Title),
 				InputType: widgets.InputTypePassword,
 			}),
 		}
 	case repository.ConnectionStatusActivated:
-		return networkMsg{
-			hideBar: true,
-			timeout: time.Second * 3,
-			bar:     widgets.NewBar(widgets.BarOpts{Message: "Activated connection!"}),
+		return widgets.BarMsg[widgets.Bar]{
+			Output: widgets.NewBar(widgets.BarOpts{Message: "Activated connection!", Timeout: time.Second * 3}),
 		}
 	default:
-		return networkMsg{
-			hideBar: true,
-			timeout: time.Second * 3,
-			bar: widgets.NewBar(widgets.BarOpts{
+		return widgets.BarMsg[widgets.Bar]{
+			Output: widgets.NewBar(widgets.BarOpts{
 				Message: fmt.Sprintf("Connection failed for %s, err: %d", w.list.SelectedItem().(item).Title, status),
+				Timeout: time.Second * 3,
 			}),
 		}
 	}

@@ -21,7 +21,7 @@ const (
 type HideBar bool
 
 type OutputType interface {
-	bool | string | types.Nil | HideBar
+	bool | string | types.Nil | HideBar | Bar
 }
 
 type BarMsg[T OutputType] struct {
