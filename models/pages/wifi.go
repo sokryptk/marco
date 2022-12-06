@@ -18,6 +18,7 @@ var title = titleStyle.Render("Wireless")
 
 const disconnectID string = "disconnect"
 
+// Deprecated : Use Bar with timeout and Init() instead
 type networkMsg struct {
 	timeout time.Duration
 	hideBar bool

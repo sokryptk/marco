@@ -18,7 +18,7 @@ const (
 	InputTypePassword
 )
 
-type HideBar interface{}
+type HideBar bool
 
 type OutputType interface {
 	bool | string | types.Nil | HideBar

@@ -6,9 +6,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"io"
+	"log"
 	"me.kryptk.marco/models/widgets"
 	"me.kryptk.marco/repository"
 	"me.kryptk.marco/services"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -19,7 +21,6 @@ type Bluetooth struct {
 	Selected repository.BluetoothDevice
 	service  repository.Bluetooth
 	list     list.Model
-	hideBar  bool
 	bar      widgets.Bar
 }
 
@@ -34,7 +35,6 @@ func (bt Bluetooth) Close() error {
 func NewBluetooth() Bluetooth {
 	bt := Bluetooth{service: services.NewBluez()}
 
-	bt.hideBar = true
 	bt.bar = widgets.Bar{}
 	bt.list = list.New([]list.Item{}, btDelegate{}, 0, 0)
 	bt.list.SetShowTitle(false)
@@ -62,6 +62,8 @@ func (bt Bluetooth) Init() tea.Cmd {
 func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	log.Println(reflect.TypeOf(msg))
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -73,6 +75,8 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, bt.list.SetItems(devicesToItems(devices)))
 		case "enter":
 			curItem := bt.list.SelectedItem().(btItem)
+			var bar widgets.Bar
+
 			if curItem.Connected() {
 				dBar := func() tea.Msg {
 					return networkMsg{
@@ -98,28 +102,23 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			connect := func() tea.Msg {
 				err := curItem.Device.Connect()
-				var duration time.Duration
-				var hideBar bool
-				bar := widgets.NewBar(widgets.BarOpts{
+				bar = widgets.NewBar(widgets.BarOpts{
 					Message: fmt.Sprintf("Successfully connected to %s", curItem.Name),
 				})
 
 				if err != nil {
-					hideBar = true
-					duration = time.Second * 3
 					bar = widgets.NewBar(widgets.BarOpts{
 						Message: fmt.Sprintf("Error connecting : %v", err),
+						Timeout: time.Second * 3,
 					})
 				}
 
 				return networkMsg{
-					hideBar: hideBar,
-					timeout: duration,
-					bar:     bar,
+					bar: bar,
 				}
 			}
 
-			cmds = append(cmds, connectingBar, connect)
+			cmds = append(cmds, connectingBar, connect, bar.Init())
 		}
 	case tea.WindowSizeMsg:
 		bt.list.SetSize(msg.Width, msg.Height-lipgloss.Height(btTitle)-lipgloss.Height(bt.bar.View()))
@@ -127,16 +126,13 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case networkMsg:
 		if msg.bar.Message != "" {
 			bt.bar = msg.bar
+			cmds = append(cmds, bt.bar.Init())
 		}
-
-		cmds = append(cmds, func() tea.Msg {
-			time.Sleep(msg.timeout)
-			return hideBarMsg(msg.hideBar)
-		})
-	case hideBarMsg:
-		bt.hideBar = bool(msg)
+	case widgets.BarMsg[widgets.HideBar]:
+		bt.bar = widgets.Bar{}
 	case widgets.BarMsg[bool]:
 		if msg.Output {
+			var bar widgets.Bar
 			err := bt.Selected.Disconnect()
 			var message string
 			if err != nil {
@@ -145,20 +141,18 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				message = "Disconnected"
 			}
 
+			bar = widgets.NewBar(widgets.BarOpts{Message: message, Timeout: time.Second * 3})
+
+			netMsg := networkMsg{
+				bar: bar,
+			}
+
 			cmds = append(cmds, func() tea.Msg {
-				return networkMsg{
-					hideBar: true,
-					timeout: time.Second * 3,
-					bar: widgets.NewBar(widgets.BarOpts{
-						Message: message,
-					}),
-				}
-			})
+				return netMsg
+			}, bar.Init())
 
 		} else {
-			cmds = append(cmds, func() tea.Msg {
-				return hideBarMsg(true)
-			})
+			bt.bar = widgets.Bar{}
 		}
 	}
 
@@ -176,7 +170,7 @@ func (bt Bluetooth) View() string {
 		bt.list.View(),
 	}
 
-	if !bt.hideBar {
+	if bt.bar.Message != "" {
 		renderStr = append(renderStr, bt.bar.View())
 	}
 
