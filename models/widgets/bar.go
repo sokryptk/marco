@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"go/types"
+	"time"
 )
 
 type InputType int
@@ -17,8 +18,10 @@ const (
 	InputTypePassword
 )
 
+type HideBar bool
+
 type OutputType interface {
-	bool | string | types.Nil
+	bool | string | types.Nil | HideBar | Bar
 }
 
 type BarMsg[T OutputType] struct {
@@ -26,34 +29,40 @@ type BarMsg[T OutputType] struct {
 	Output T
 }
 
+type BarOpts Bar
+
 type Bar struct {
 	ID        string
 	Message   string
 	input     textinput.Model
 	InputType InputType
+	Timeout   time.Duration
 }
 
-func NewBar(message string, inputType InputType, ID string) Bar {
-	bar := Bar{
-		Message:   message,
-		ID:        ID,
-		InputType: inputType,
-	}
+func NewBar(opts BarOpts) Bar {
+	bar := opts
 
-	if inputType == InputTypeText || inputType == InputTypePassword {
+	if opts.InputType == InputTypeText || opts.InputType == InputTypePassword {
 		bar.input = textinput.New()
 	}
 
-	if inputType == InputTypePassword {
+	if opts.InputType == InputTypePassword {
 		bar.input.EchoMode = textinput.EchoPassword
 		bar.input.Prompt = ""
 		bar.input.Focus()
 	}
 
-	return bar
+	return Bar(bar)
 }
 
 func (b Bar) Init() tea.Cmd {
+	if b.Timeout != 0 {
+		return func() tea.Msg {
+			time.Sleep(b.Timeout)
+			return BarMsg[HideBar]{}
+		}
+	}
+
 	return nil
 }
 

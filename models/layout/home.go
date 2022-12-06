@@ -130,7 +130,7 @@ func (h Home) View() string {
 func NewHome() Home {
 	withNames := []teaModelWithName{
 		pages.NewNetwork(),
-		pages.NewNetwork(),
+		pages.NewBluetooth(),
 	}
 
 	return Home{
