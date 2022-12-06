@@ -98,20 +98,24 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			connect := func() tea.Msg {
 				err := curItem.Device.Connect()
+				var duration time.Duration
+				var hideBar bool
+				bar := widgets.NewBar(widgets.BarOpts{
+					Message: fmt.Sprintf("Successfully connected to %s", curItem.Name),
+				})
+
 				if err != nil {
-					return networkMsg{
-						hideBar: true,
-						timeout: time.Second * 3,
-						bar: widgets.NewBar(widgets.BarOpts{
-							Message: fmt.Sprintf("Error connecting : %v", err),
-						}),
-					}
+					hideBar = true
+					duration = time.Second * 3
+					bar = widgets.NewBar(widgets.BarOpts{
+						Message: fmt.Sprintf("Error connecting : %v", err),
+					})
 				}
 
 				return networkMsg{
-					bar: widgets.NewBar(widgets.BarOpts{
-						Message: fmt.Sprintf("Successfully connected to %s", curItem.Name),
-					}),
+					hideBar: hideBar,
+					timeout: duration,
+					bar:     bar,
 				}
 			}
 
@@ -134,22 +138,20 @@ func (bt Bluetooth) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case widgets.BarMsg[bool]:
 		if msg.Output {
 			err := bt.Selected.Disconnect()
-			var bar widgets.Bar
+			var message string
 			if err != nil {
-				bar = widgets.NewBar(widgets.BarOpts{
-					Message: "Disconnected",
-				})
+				message = fmt.Sprintf("Error disconnecting, %v", err)
 			} else {
-				bar = widgets.NewBar(widgets.BarOpts{
-					Message: fmt.Sprintf("Error disconnecting, %v", err),
-				})
+				message = "Disconnected"
 			}
 
 			cmds = append(cmds, func() tea.Msg {
 				return networkMsg{
 					hideBar: true,
 					timeout: time.Second * 3,
-					bar:     bar,
+					bar: widgets.NewBar(widgets.BarOpts{
+						Message: message,
+					}),
 				}
 			})
 
