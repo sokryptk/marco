@@ -23,9 +23,8 @@ type Network struct {
 	width, height int
 	selected      repository.AccessPoint
 	state         int
+	dialog        tea.Model
 	list          list.Model
-	bar           tea.Model
-	barState      int
 	Service       repository.Network
 }
 
@@ -33,7 +32,7 @@ func NewNetwork() Network {
 	network := Network{Service: services.NewNM()}
 	_ = network.Service.GetDevices()
 
-	network.bar = widgets.Bar{}
+	network.dialog = widgets.Dialog{}
 	network.list = list.New([]list.Item{}, itemDelegate{10}, 0, 0)
 	network.list.SetFilteringEnabled(false)
 	network.list.SetShowTitle(false)
@@ -101,11 +100,11 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		case 1:
 			var cmd tea.Cmd
-			w.bar, cmd = w.bar.Update(msg)
+			w.dialog, cmd = w.dialog.Update(msg)
 			cmds = append(cmds, cmd)
 		}
 	case tea.WindowSizeMsg:
-		w.list.SetSize(msg.Width-2, msg.Height-lipgloss.Height(title)-lipgloss.Height(w.bar.View())-2)
+		w.list.SetSize(msg.Width-2, msg.Height-lipgloss.Height(title)-lipgloss.Height(w.dialog.View())-2)
 		w.list.SetDelegate(itemDelegate{Width: msg.Width - activeTabStyle.GetHorizontalFrameSize() - 8})
 	case widgets.BarMsg[bool]:
 		log.
@@ -142,7 +141,7 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return connectWithBar(w, repository.ConnectOptions{Password: utils.Ptr(msg.Output)})
 		})
 	case widgets.BarMsg[widgets.Bar]:
-		w.bar = msg.Output
+		w.dialog = msg.Output
 
 		if msg.Output.Timeout == 0 {
 			w.state = 1
@@ -150,9 +149,9 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			w.state = 0
 		}
 
-		cmds = append(cmds, w.bar.Init())
+		cmds = append(cmds, w.dialog.Init())
 	case widgets.BarMsg[widgets.HideBar]:
-		w.bar = widgets.Bar{}
+		w.dialog = widgets.Bar{}
 	}
 
 	return w, tea.Batch(cmds...)
@@ -164,14 +163,12 @@ func (w Network) View() string {
 		w.list.View(),
 	}
 
-	if w.bar.View() != "" {
-		renderList = append(renderList, w.bar.View())
-	}
-
-	return lipgloss.JoinVertical(
+	main := lipgloss.JoinVertical(
 		lipgloss.Left,
 		renderList...,
 	)
+	
+	return utils.PlaceOverlay(lipgloss.Width(main)/2, lipgloss.Height(main)/2, w.dialog.View(), main)
 }
 
 func (w Network) Name() string {
