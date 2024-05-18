@@ -10,6 +10,10 @@ import (
 	"github.com/muesli/termenv"
 )
 
+type ui struct{}
+
+var UI = ui{}
+
 // Most of this code is borrowed from
 // https://github.com/charmbracelet/lipgloss/pull/102
 // as well as the lipgloss library.
@@ -30,7 +34,7 @@ func getLines(s string) (lines []string, widest int) {
 }
 
 // PlaceOverlay places fg on top of bg.
-func PlaceOverlay(x, y int, fg, bg string, opts ...WhitespaceOption) string {
+func (ui ui) PlaceOverlay(x, y int, fg, bg string, opts ...WhitespaceOption) string {
 	fgLines, fgWidth := getLines(fg)
 	bgLines, bgWidth := getLines(bg)
 	bgHeight := len(bgLines)

@@ -167,8 +167,8 @@ func (w Network) View() string {
 		lipgloss.Left,
 		renderList...,
 	)
-	
-	return utils.PlaceOverlay(lipgloss.Width(main)/2, lipgloss.Height(main)/2, w.dialog.View(), main)
+
+	return utils.UI.PlaceOverlay(lipgloss.Width(main)/2, lipgloss.Height(main)/2, w.dialog.View(), main)
 }
 
 func (w Network) Name() string {
