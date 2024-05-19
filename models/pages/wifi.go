@@ -5,10 +5,11 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"io"
-	"log"
-	"me.kryptk.marco/models/widgets"
+	"me.kryptk.marco/models/components"
 	"me.kryptk.marco/repository"
 	"me.kryptk.marco/services"
 	"me.kryptk.marco/utils"
@@ -23,8 +24,8 @@ type Network struct {
 	width, height int
 	selected      repository.AccessPoint
 	state         int
-	dialog        tea.Model
 	list          list.Model
+	overlay       *components.Overlay
 	Service       repository.Network
 }
 
@@ -32,7 +33,6 @@ func NewNetwork() Network {
 	network := Network{Service: services.NewNM()}
 	_ = network.Service.GetDevices()
 
-	network.dialog = widgets.Dialog{}
 	network.list = list.New([]list.Item{}, itemDelegate{10}, 0, 0)
 	network.list.SetFilteringEnabled(false)
 	network.list.SetShowTitle(false)
@@ -58,100 +58,115 @@ func (w Network) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	cmds = append(cmds, w.list.SetItems(w.getItems()))
 
+	if w.overlay != nil && w.overlay.Visible() {
+		var cmd tea.Cmd
+		w.overlay, cmd = w.overlay.Update(msg)
+
+		switch msg := msg.(type) {
+		case components.ShowOverlayMsg:
+			var cmd tea.Cmd
+			w.overlay = w.overlay.Close()
+			w.overlay, cmd = msg.Overlay.Update(msg)
+			cmds = append(cmds, w.overlay.Init(), cmd)
+			return w, tea.Batch(cmds...)
+		}
+
+		form, ok := w.overlay.GetChild().(*huh.Form)
+		if !ok {
+			return w, cmd
+		}
+
+		if form.State == huh.StateCompleted {
+			w.overlay = w.overlay.Close()
+
+			w.overlay, cmd = components.NewOverlay(
+				ProgressDialog("Connecting", false),
+				0,
+				components.OverlayViewProps{
+					X: 0.95,
+					Y: 0.95,
+				},
+			)
+
+			cmds = append(cmds, cmd)
+
+			bgProcess := func() tea.Msg {
+				status := w.selected.Connect(repository.ConnectOptions{Password: utils.Ptr[string](form.Get("pass").(string))})
+
+				if status == repository.ConnectionStatusActivated {
+					_, cmd = components.NewOverlay(
+						ProgressDialog(fmt.Sprintf("Connected to %s", w.selected.GetSSID()), true),
+						time.Second*5,
+						components.OverlayViewProps{
+							X: 0.5,
+							Y: 0.5,
+						},
+					)
+
+					return cmd()
+				}
+
+				_, cmd = components.NewOverlay(
+					ProgressDialog(fmt.Sprintf("Failed to connect to %s", w.selected.GetSSID()), true),
+					time.Second*5,
+					components.OverlayViewProps{
+						X: 0.5,
+						Y: 0.5,
+					},
+				)
+
+				return cmd()
+			}
+
+			cmds = append(cmds, bgProcess)
+			return w, tea.Batch(cmds...)
+		}
+
+		cmds = append(cmds, cmd)
+		return w, tea.Batch(cmds...)
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch w.state {
-		case 0:
-			switch msg.String() {
-			case "s":
-				for _, device := range w.Service.GetDevices() {
-					switch device := device.(type) {
-					case repository.WiFiDevice:
-						_ = device.RequestScan()
-						time.Sleep(time.Second * 5)
-						cmds = append(cmds, w.list.SetItems(w.getItems()))
-					}
+		switch msg.String() {
+		case "s":
+			for _, device := range w.Service.GetDevices() {
+				switch device := device.(type) {
+				case repository.WiFiDevice:
+					_ = device.RequestScan()
+					time.Sleep(time.Second * 5)
+					cmds = append(cmds, w.list.SetItems(w.getItems()))
 				}
-			case "enter":
-				currentItem := w.list.SelectedItem().(item).AccessPoint
-				var barMsg widgets.BarMsg[widgets.Bar]
-
-				if !currentItem.IsConnected() {
-					barMsg.Output = widgets.NewBar(widgets.BarOpts{Message: "Connecting..."})
-					cmds = append(cmds, func() tea.Msg {
-						return connectWithBar(w, repository.ConnectOptions{})
-					})
-				} else {
-					barMsg.Output = widgets.NewBar(widgets.BarOpts{
-						Message:   fmt.Sprintf("Disconnect from %s?", currentItem.GetSSID()),
-						InputType: widgets.InputTypeChoice,
-						ID:        disconnectID,
-					})
-				}
-
-				cmds = append(cmds, func() tea.Msg {
-					return barMsg
-				})
 			}
+		case "enter":
+			w.selected = w.list.SelectedItem().(item).AccessPoint
 
 			var cmd tea.Cmd
-			w.list, cmd = w.list.Update(msg)
 
-			cmds = append(cmds, cmd)
-		case 1:
-			var cmd tea.Cmd
-			w.dialog, cmd = w.dialog.Update(msg)
-			cmds = append(cmds, cmd)
+			w.overlay, cmd = components.NewOverlay(
+				ConnectDialog(w.selected),
+				0,
+				components.OverlayViewProps{
+					X: 0.5,
+					Y: 0.5,
+				},
+			)
+
+			return w, cmd
 		}
+
+		var cmd tea.Cmd
+		w.list, cmd = w.list.Update(msg)
+
+		cmds = append(cmds, cmd)
 	case tea.WindowSizeMsg:
-		w.list.SetSize(msg.Width-2, msg.Height-lipgloss.Height(title)-lipgloss.Height(w.dialog.View())-2)
+		w.list.SetSize(msg.Width-2, msg.Height-lipgloss.Height(title))
 		w.list.SetDelegate(itemDelegate{Width: msg.Width - activeTabStyle.GetHorizontalFrameSize() - 8})
-	case widgets.BarMsg[bool]:
-		log.
-			Println("sup my homie")
-		currentItem := w.list.SelectedItem().(item).AccessPoint
-		if msg.ID == disconnectID {
-			log.Println(msg.Output)
-			if !msg.Output {
-				cmds = append(cmds, func() tea.Msg {
-					return widgets.BarMsg[widgets.HideBar]{}
-				})
-
-				break
-			}
-
-			var bar widgets.Bar
-			err := currentItem.Disconnect()
-			if err != nil {
-				bar = widgets.NewBar(widgets.BarOpts{Message: fmt.Sprintf("Error while disconnecting : %v", err)})
-			} else {
-				bar = widgets.NewBar(widgets.BarOpts{Message: fmt.Sprintf("Disconnected from %s", currentItem.GetSSID())})
-			}
-
-			bar.Timeout = time.Second * 3
-			cmds = append(cmds, func() tea.Msg {
-				return widgets.BarMsg[widgets.Bar]{
-					Output: bar,
-				}
-			})
-		}
-
-	case widgets.BarMsg[string]:
-		cmds = append(cmds, func() tea.Msg {
-			return connectWithBar(w, repository.ConnectOptions{Password: utils.Ptr(msg.Output)})
-		})
-	case widgets.BarMsg[widgets.Bar]:
-		w.dialog = msg.Output
-
-		if msg.Output.Timeout == 0 {
-			w.state = 1
-		} else {
-			w.state = 0
-		}
-
-		cmds = append(cmds, w.dialog.Init())
-	case widgets.BarMsg[widgets.HideBar]:
-		w.dialog = widgets.Bar{}
+	case components.ShowOverlayMsg:
+		var cmd tea.Cmd
+		w.overlay = w.overlay.Close()
+		w.overlay, cmd = msg.Overlay.Update(msg)
+		cmds = append(cmds, w.overlay.Init(), cmd)
 	}
 
 	return w, tea.Batch(cmds...)
@@ -168,7 +183,10 @@ func (w Network) View() string {
 		renderList...,
 	)
 
-	return utils.UI.PlaceOverlay(lipgloss.Width(main)/2, lipgloss.Height(main)/2, w.dialog.View(), main)
+	if w.overlay != nil && w.overlay.Visible() {
+		return w.overlay.SetBg(main).View()
+	}
+	return main
 }
 
 func (w Network) Name() string {
@@ -279,27 +297,28 @@ func (i itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
 	return nil
 }
 
-func connectWithBar(w Network, options repository.ConnectOptions) widgets.BarMsg[widgets.Bar] {
-	status := w.list.SelectedItem().(item).AccessPoint.Connect(options)
+func ConnectDialog(ap repository.AccessPoint) *huh.Form {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().Title(fmt.Sprintf("Connecting to %s", ap.GetSSID())),
+			huh.NewInput().Key("pass").Title("Password").Password(true),
+			huh.NewConfirm().
+				Key("connect").
+				Title("All done?").
+				Validate(func(v bool) error {
+					if !v {
+						return fmt.Errorf("Welp, finish up then")
+					}
+					return nil
+				}).
+				Affirmative("Connect").
+				Negative("Cancel"),
+		),
+	).WithWidth(60).WithHeight(20)
 
-	switch status {
-	case repository.ConnectionStatusNeedAuth:
-		return widgets.BarMsg[widgets.Bar]{
-			Output: widgets.NewBar(widgets.BarOpts{
-				Message:   fmt.Sprintf("Password for %s", w.list.SelectedItem().(item).Title),
-				InputType: widgets.InputTypePassword,
-			}),
-		}
-	case repository.ConnectionStatusActivated:
-		return widgets.BarMsg[widgets.Bar]{
-			Output: widgets.NewBar(widgets.BarOpts{Message: "Activated connection!", Timeout: time.Second * 3}),
-		}
-	default:
-		return widgets.BarMsg[widgets.Bar]{
-			Output: widgets.NewBar(widgets.BarOpts{
-				Message: fmt.Sprintf("Connection failed for %s, err: %d", w.list.SelectedItem().(item).Title, status),
-				Timeout: time.Second * 3,
-			}),
-		}
-	}
+	return form
+}
+
+func ProgressDialog(progress string, static bool) *spinner.Spinner {
+	return spinner.New().Accessible(static).Type(spinner.Globe).Title(progress)
 }

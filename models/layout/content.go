@@ -3,7 +3,6 @@ package layout
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"me.kryptk.marco/models/messages"
 )
 
 var content = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
@@ -11,7 +10,6 @@ var content = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 type Content struct {
 	width, height int
 	model         tea.Model
-	dialog        tea.Model
 }
 
 func (c Content) Init() tea.Cmd {
@@ -31,8 +29,6 @@ func (c Content) Update(msg tea.Msg) (Content, tea.Cmd) {
 		c.model, cmd = c.model.Update(msg)
 	case PageSwitchMsg:
 		c.model = msg.new
-	case messages.ShowDialogMsg:
-		c.model = msg.Dialog
 	case tea.KeyMsg:
 		c.model, cmd = c.model.Update(msg)
 	default:
